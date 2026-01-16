@@ -1,30 +1,44 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Button from "../components/Button.jsx";
 import InvoicePreview from "../components/invoice/InvoicePreview.jsx";
+import { useToast } from "../components/Toast.jsx";
+import { createInvoice, getNextInvoiceNumber } from "../api/invoiceApi.js";
 
 function CreateInvoice() {
-  // Generate invoice number
-  const generateInvoiceNumber = () => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 9999) + 1;
-    return `BOAT-INV-${year}-${String(random).padStart(4, "0")}`;
-  };
+  const { showSuccess, showError } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Invoice Meta Data
   const [invoiceData, setInvoiceData] = useState({
-    // eslint-disable-next-line react-hooks/purity
-    invoiceNumber: generateInvoiceNumber(),
+    invoiceNumber: "Loading...",
     invoiceDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     currency: "LKR",
     status: "Draft",
-    reference: "",
+    referenceNumber: "",
     projectName: "",
-    notes: "",
-    terms: "",
-    signatureName: "",
-    signatureTitle: "",
+    notes:
+      "Payment is due within 30 days. Please make payment to the account details provided. Thank you for your business!",
   });
+
+  // Fetch invoice number on component mount
+  useEffect(() => {
+    const fetchInvoiceNumber = async () => {
+      try {
+        const response = await getNextInvoiceNumber();
+        if (response.success) {
+          setInvoiceData((prev) => ({
+            ...prev,
+            invoiceNumber: response.data.invoiceNumber,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch invoice number:", error);
+        showError("Failed to load invoice number");
+      }
+    };
+    fetchInvoiceNumber();
+  }, [showError]);
 
   // Sender Data (theBOAT)
   const [senderData, setSenderData] = useState({
@@ -42,11 +56,11 @@ function CreateInvoice() {
 
   // Client Data
   const [clientData, setClientData] = useState({
-    clientName: "",
-    clientCompany: "",
-    clientAddress: "",
-    clientEmail: "",
-    clientPhone: "",
+    name: "",
+    company: "",
+    address: "",
+    email: "",
+    phone: "",
   });
 
   // Line Items with discount and tax
@@ -55,11 +69,12 @@ function CreateInvoice() {
       id: 1,
       description: "",
       quantity: 1,
-      rate: 0,
-      discount: 0,
-      discountType: "percentage", // or "amount"
+      unitPrice: 0,
+      discount: {
+        type: "percentage",
+        value: 0,
+      },
       tax: 0,
-      taxType: "percentage", // or "amount"
       amount: 0,
     },
   ]);
@@ -104,24 +119,20 @@ function CreateInvoice() {
 
   // Calculate line item amount
   const calculateItemAmount = (item) => {
-    let amount = item.quantity * item.rate;
+    let amount = item.quantity * item.unitPrice;
 
     // Apply discount
-    if (item.discount > 0) {
-      if (item.discountType === "percentage") {
-        amount = amount - (amount * item.discount) / 100;
+    if (item.discount.value > 0) {
+      if (item.discount.type === "percentage") {
+        amount = amount - (amount * item.discount.value) / 100;
       } else {
-        amount = amount - item.discount;
+        amount = amount - item.discount.value;
       }
     }
 
     // Apply tax
     if (item.tax > 0) {
-      if (item.taxType === "percentage") {
-        amount = amount + (amount * item.tax) / 100;
-      } else {
-        amount = amount + item.tax;
-      }
+      amount = amount + (amount * item.tax) / 100;
     }
 
     return Math.max(0, amount);
@@ -132,7 +143,16 @@ function CreateInvoice() {
     setItems((prevItems) =>
       prevItems.map((item) => {
         if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
+          let updatedItem = { ...item };
+
+          // Handle nested properties like "discount.value" or "discount.type"
+          if (field.includes(".")) {
+            const [parent, child] = field.split(".");
+            updatedItem[parent] = { ...updatedItem[parent], [child]: value };
+          } else {
+            updatedItem[field] = value;
+          }
+
           // Recalculate amount
           updatedItem.amount = calculateItemAmount(updatedItem);
           return updatedItem;
@@ -148,11 +168,12 @@ function CreateInvoice() {
       id: items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1,
       description: "",
       quantity: 1,
-      rate: 0,
-      discount: 0,
-      discountType: "percentage",
+      unitPrice: 0,
+      discount: {
+        type: "percentage",
+        value: 0,
+      },
       tax: 0,
-      taxType: "percentage",
       amount: 0,
     };
     setItems([...items, newItem]);
@@ -168,30 +189,26 @@ function CreateInvoice() {
   // Calculate totals
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => {
-      return sum + item.quantity * item.rate;
+      return sum + item.quantity * item.unitPrice;
     }, 0);
 
     const discountTotal = items.reduce((sum, item) => {
-      const lineTotal = item.quantity * item.rate;
-      if (item.discountType === "percentage") {
-        return sum + (lineTotal * item.discount) / 100;
+      const lineTotal = item.quantity * item.unitPrice;
+      if (item.discount.type === "percentage") {
+        return sum + (lineTotal * item.discount.value) / 100;
       } else {
-        return sum + item.discount;
+        return sum + item.discount.value;
       }
     }, 0);
 
     const taxTotal = items.reduce((sum, item) => {
-      const lineTotal = item.quantity * item.rate;
+      const lineTotal = item.quantity * item.unitPrice;
       const afterDiscount =
-        item.discountType === "percentage"
-          ? lineTotal - (lineTotal * item.discount) / 100
-          : lineTotal - item.discount;
+        item.discount.type === "percentage"
+          ? lineTotal - (lineTotal * item.discount.value) / 100
+          : lineTotal - item.discount.value;
 
-      if (item.taxType === "percentage") {
-        return sum + (afterDiscount * item.tax) / 100;
-      } else {
-        return sum + item.tax;
-      }
+      return sum + (afterDiscount * item.tax) / 100;
     }, 0);
 
     const grandTotal = subtotal - discountTotal + taxTotal;
@@ -215,16 +232,18 @@ function CreateInvoice() {
     ) {
       newErrors.dueDate = "Due date must be after invoice date";
     }
-    if (!clientData.clientName)
-      newErrors.clientName = "Client name is required";
-    if (!clientData.clientEmail)
-      newErrors.clientEmail = "Client email is required";
+    if (!clientData.name) newErrors.clientName = "Client name is required";
+    if (!clientData.email) newErrors.clientEmail = "Client email is required";
+    if (!clientData.address)
+      newErrors.clientAddress = "Client address is required";
 
     // Validate items
     items.forEach((item, index) => {
-      if (item.quantity < 0)
-        newErrors[`item${index}Qty`] = "Quantity cannot be negative";
-      if (item.rate < 0)
+      if (!item.description)
+        newErrors[`item${index}Desc`] = "Description is required";
+      if (item.quantity <= 0)
+        newErrors[`item${index}Qty`] = "Quantity must be greater than 0";
+      if (item.unitPrice < 0)
         newErrors[`item${index}Rate`] = "Unit price cannot be negative";
     });
 
@@ -233,39 +252,69 @@ function CreateInvoice() {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      console.log("Invoice Data:", {
-        invoiceData,
-        senderData,
-        clientData,
-        items,
-        totals,
-      });
-      // Generate PDF or save invoice
+
+    if (!validateForm()) {
+      showError("Please fix the errors in the form");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Transform data to match backend schema
+      const invoicePayload = {
+        invoiceDate: invoiceData.invoiceDate,
+        dueDate: invoiceData.dueDate,
+        currency: invoiceData.currency,
+        status: invoiceData.status,
+        referenceNumber: invoiceData.referenceNumber || "",
+        projectName: invoiceData.projectName || "",
+        client: {
+          name: clientData.name,
+          company: clientData.company || "",
+          address: clientData.address,
+          email: clientData.email,
+          phone: clientData.phone || "",
+        },
+        lineItems: items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: {
+            type: item.discount.type,
+            value: item.discount.value,
+          },
+          tax: item.tax,
+        })),
+        notes: invoiceData.notes,
+      };
+
+      const response = await createInvoice(invoicePayload);
+
+      if (response.success) {
+        showSuccess("Invoice created successfully!");
+        console.log("Created Invoice:", response.data);
+
+        // Optionally reset form or redirect
+        // resetForm();
+      }
+    } catch (error) {
+      showError(error.message || "Failed to create invoice");
+      console.error("Error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Handle save draft
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     setInvoiceData((prev) => ({ ...prev, status: "Draft" }));
-    console.log("Saving draft...", {
-      invoiceData,
-      senderData,
-      clientData,
-      items,
-      totals,
-    });
-    // Save to local storage or database
-  };
 
-  // Generate PDF
-  const handleGeneratePDF = () => {
-    if (validateForm()) {
-      console.log("Generating PDF...");
-      // PDF generation logic would go here
-    }
+    // Call handleSubmit with Draft status
+    const fakeEvent = { preventDefault: () => {} };
+    await handleSubmit(fakeEvent);
   };
 
   return (
@@ -289,11 +338,21 @@ function CreateInvoice() {
             >
               {showPreview ? "Hide Preview" : "Show Preview"}
             </Button>
-            <Button type="button" variant="secondary" onClick={handleSaveDraft}>
-              Save as Draft
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save as Draft"}
             </Button>
-            <Button type="button" variant="black" onClick={handleGeneratePDF}>
-              Export PDF
+            <Button
+              type="submit"
+              variant="black"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating..." : "Create Invoice"}
             </Button>
           </div>
         </div>
@@ -416,8 +475,8 @@ function CreateInvoice() {
                     </label>
                     <input
                       type="text"
-                      name="reference"
-                      value={invoiceData.reference}
+                      name="referenceNumber"
+                      value={invoiceData.referenceNumber}
                       onChange={handleInputChange}
                       placeholder="Optional"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -598,8 +657,8 @@ function CreateInvoice() {
                     </label>
                     <input
                       type="text"
-                      name="clientName"
-                      value={clientData.clientName}
+                      name="name"
+                      value={clientData.name}
                       onChange={handleClientChange}
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.clientName ? "border-red-500" : "border-gray-300"
@@ -619,8 +678,8 @@ function CreateInvoice() {
                     </label>
                     <input
                       type="text"
-                      name="clientCompany"
-                      value={clientData.clientCompany}
+                      name="company"
+                      value={clientData.company}
                       onChange={handleClientChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Optional"
@@ -632,8 +691,8 @@ function CreateInvoice() {
                       Client Address
                     </label>
                     <textarea
-                      name="clientAddress"
-                      value={clientData.clientAddress}
+                      name="address"
+                      value={clientData.address}
                       onChange={handleClientChange}
                       rows="3"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -647,8 +706,8 @@ function CreateInvoice() {
                     </label>
                     <input
                       type="email"
-                      name="clientEmail"
-                      value={clientData.clientEmail}
+                      name="email"
+                      value={clientData.email}
                       onChange={handleClientChange}
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.clientEmail
@@ -670,8 +729,8 @@ function CreateInvoice() {
                     </label>
                     <input
                       type="tel"
-                      name="clientPhone"
-                      value={clientData.clientPhone}
+                      name="phone"
+                      value={clientData.phone}
                       onChange={handleClientChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Optional"
@@ -697,7 +756,7 @@ function CreateInvoice() {
                 </div>
 
                 <div className="space-y-4">
-                  {items.map((item, index) => (
+                  {items.map((item) => (
                     <div
                       key={item.id}
                       className="border border-gray-200 rounded-lg p-4 bg-gray-50"
@@ -753,11 +812,11 @@ function CreateInvoice() {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.rate}
+                            value={item.unitPrice}
                             onChange={(e) =>
                               handleItemChange(
                                 item.id,
-                                "rate",
+                                "unitPrice",
                                 parseFloat(e.target.value) || 0
                               )
                             }
@@ -775,11 +834,11 @@ function CreateInvoice() {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.discount}
+                            value={item.discount.value}
                             onChange={(e) =>
                               handleItemChange(
                                 item.id,
-                                "discount",
+                                "discount.value",
                                 parseFloat(e.target.value) || 0
                               )
                             }
@@ -788,34 +847,35 @@ function CreateInvoice() {
                           />
                         </div>
 
-                        <div className="col-span-1">
+                        <div className="col-span-2">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
                             Type
                           </label>
                           <select
-                            value={item.discountType}
+                            value={item.discount.type}
                             onChange={(e) =>
                               handleItemChange(
                                 item.id,
-                                "discountType",
+                                "discount.type",
                                 e.target.value
                               )
                             }
-                            className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                           >
-                            <option value="percentage">%</option>
-                            <option value="amount">Amt</option>
+                            <option value="percentage">Percentage (%)</option>
+                            <option value="fixed">Fixed Amount</option>
                           </select>
                         </div>
 
                         {/* Tax */}
                         <div className="col-span-2">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Tax
+                            Tax (%)
                           </label>
                           <input
                             type="number"
                             min="0"
+                            max="100"
                             step="0.01"
                             value={item.tax}
                             onChange={(e) =>
@@ -828,26 +888,6 @@ function CreateInvoice() {
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             placeholder="0"
                           />
-                        </div>
-
-                        <div className="col-span-1">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Type
-                          </label>
-                          <select
-                            value={item.taxType}
-                            onChange={(e) =>
-                              handleItemChange(
-                                item.id,
-                                "taxType",
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="percentage">%</option>
-                            <option value="amount">Amt</option>
-                          </select>
                         </div>
                       </div>
 
@@ -893,50 +933,6 @@ function CreateInvoice() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       placeholder="Thank you for your business. Payment is due within 30 days."
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Terms & Conditions
-                    </label>
-                    <textarea
-                      name="terms"
-                      value={invoiceData.terms}
-                      onChange={handleInputChange}
-                      rows="3"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      placeholder="Optional terms and conditions..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Signature Name
-                      </label>
-                      <input
-                        type="text"
-                        name="signatureName"
-                        value={invoiceData.signatureName}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Authorized signatory name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Signature Title
-                      </label>
-                      <input
-                        type="text"
-                        name="signatureTitle"
-                        value={invoiceData.signatureTitle}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., Managing Director"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
