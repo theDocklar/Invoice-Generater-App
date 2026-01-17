@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../components/Modal.jsx";
 import Button from "../components/Button.jsx";
 import { useToast } from "../components/Toast.jsx";
+import {
+  getAllClients,
+  createClient,
+  updateClient,
+  deleteClient,
+} from "../api/clientApi.js";
 
 function Clients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { confirm, showSuccess } = useToast();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { confirm, showSuccess, showError } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     companyName: "",
@@ -15,49 +25,26 @@ function Clients() {
     address: "",
   });
 
-  // Sample client data
-  const [clients] = useState([
-    {
-      id: 1,
-      name: "John Smith",
-      companyName: "Acme Corp",
-      email: "john.smith@acmecorp.com",
-      mobile: "+1 (555) 123-4567",
-      address: "123 Business St, New York, NY 10001",
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      companyName: "Tech Solutions Ltd",
-      email: "sarah.j@techsolutions.com",
-      mobile: "+1 (555) 234-5678",
-      address: "456 Innovation Ave, San Francisco, CA 94102",
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      companyName: "Global Industries",
-      email: "m.chen@globalindustries.com",
-      mobile: "+1 (555) 345-6789",
-      address: "789 Corporate Blvd, Chicago, IL 60601",
-    },
-    {
-      id: 4,
-      name: "Emily Davis",
-      companyName: "StartUp Inc",
-      email: "emily@startupinc.com",
-      mobile: "+1 (555) 456-7890",
-      address: "321 Venture Way, Austin, TX 78701",
-    },
-    {
-      id: 5,
-      name: "David Wilson",
-      companyName: "Enterprise Group",
-      email: "d.wilson@enterprisegroup.com",
-      mobile: "+1 (555) 567-8901",
-      address: "654 Commerce Dr, Boston, MA 02101",
-    },
-  ]);
+  // Fetch clients on mount
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  // Fetch all clients
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getAllClients();
+      if (response.success) {
+        setClients(response.data);
+      }
+    } catch (error) {
+      showError("Failed to load clients");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -66,18 +53,43 @@ function Clients() {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("New client data:", formData);
-    // Here you would typically add the client to your state or send to API
-    setIsModalOpen(false);
+    try {
+      if (isEditMode) {
+        // Update existing client
+        const response = await updateClient(editingClientId, formData);
+        if (response.success) {
+          showSuccess("Client updated successfully!");
+          fetchClients();
+        }
+      } else {
+        // Create new client
+        const response = await createClient(formData);
+        if (response.success) {
+          showSuccess("Client created successfully!");
+          fetchClients();
+        }
+      }
+      setIsModalOpen(false);
+      resetForm();
+    } catch (error) {
+      showError(error.message || "Failed to save client");
+    }
+  };
+
+  // Handle edit
+  const handleEdit = (client) => {
+    setIsEditMode(true);
+    setEditingClientId(client._id);
     setFormData({
-      name: "",
-      companyName: "",
-      email: "",
-      mobile: "",
-      address: "",
+      name: client.name,
+      companyName: client.companyName || "",
+      email: client.email,
+      mobile: client.mobile,
+      address: client.address || "",
     });
+    setIsModalOpen(true);
   };
 
   // Handle delete with confirmation
@@ -86,10 +98,35 @@ function Clients() {
       `Are you sure you want to delete ${clientName}?`
     );
     if (confirmed) {
-      // Here you would call your API to delete the client
-      console.log("Deleting client:", clientId);
-      showSuccess(`${clientName} has been deleted successfully!`);
+      try {
+        const response = await deleteClient(clientId);
+        if (response.success) {
+          showSuccess(`${clientName} has been deleted successfully!`);
+          fetchClients();
+        }
+      } catch (error) {
+        showError(error.message || "Failed to delete client");
+      }
     }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      companyName: "",
+      email: "",
+      mobile: "",
+      address: "",
+    });
+    setIsEditMode(false);
+    setEditingClientId(null);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    resetForm();
   };
 
   // Filter clients based on search
@@ -97,9 +134,9 @@ function Clients() {
     const searchLower = searchQuery.toLowerCase();
     return (
       client.name.toLowerCase().includes(searchLower) ||
-      client.companyName.toLowerCase().includes(searchLower) ||
-      client.email.toLowerCase().includes(searchLower) ||
-      client.mobile.includes(searchQuery)
+      (client.companyName &&
+        client.companyName.toLowerCase().includes(searchLower)) ||
+      client.email.toLowerCase().includes(searchLower) 
     );
   });
 
@@ -109,7 +146,13 @@ function Clients() {
         {/* Page Title and Add Button */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">Clients</h1>
-          <Button variant="black" onClick={() => setIsModalOpen(true)}>
+          <Button
+            variant="black"
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+          >
             + Add New Client
           </Button>
         </div>
@@ -118,7 +161,7 @@ function Clients() {
         <div className="mb-6">
           <input
             type="text"
-            placeholder="Search by name, company, email, or mobile..."
+            placeholder="Search by name, company, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -151,17 +194,26 @@ function Clients() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredClients.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
+                    Loading clients...
+                  </td>
+                </tr>
+              ) : filteredClients.length > 0 ? (
                 filteredClients.map((client) => (
                   <tr
-                    key={client.id}
+                    key={client._id}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {client.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {client.companyName}
+                      {client.companyName || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {client.email}
@@ -170,18 +222,22 @@ function Clients() {
                       {client.mobile}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                      {client.address}
+                      {client.address || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="small">
+                        <Button
+                          variant="ghost"
+                          size="small"
+                          onClick={() => handleEdit(client)}
+                        >
                           Edit
                         </Button>
                         <Button
                           variant="ghost"
                           size="small"
                           className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDelete(client.id, client.name)}
+                          onClick={() => handleDelete(client._id, client.name)}
                         >
                           Delete
                         </Button>
@@ -211,11 +267,11 @@ function Clients() {
         )}
       </div>
 
-      {/* Add New Client Modal */}
+      {/* Add/Edit Client Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Add New Client"
+        onClose={handleModalClose}
+        title={isEditMode ? "Edit Client" : "Add New Client"}
         size="medium"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -238,14 +294,13 @@ function Clients() {
           {/* Company Name Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Company Name *
+              Company Name
             </label>
             <input
               type="text"
               name="companyName"
               value={formData.companyName}
               onChange={handleInputChange}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter company name"
             />
@@ -286,13 +341,12 @@ function Clients() {
           {/* Address Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address *
+              Address
             </label>
             <textarea
               name="address"
               value={formData.address}
               onChange={handleInputChange}
-              required
               rows="3"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Enter complete address"
@@ -304,11 +358,13 @@ function Clients() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleModalClose}
             >
               Cancel
             </Button>
-            <Button type="submit">Add Client</Button>
+            <Button type="submit">
+              {isEditMode ? "Update Client" : "Add Client"}
+            </Button>
           </div>
         </form>
       </Modal>
