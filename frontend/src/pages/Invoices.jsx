@@ -51,8 +51,11 @@ function Invoices() {
     const clientName = invoice.client?.name || "";
     const matchesSearch =
       invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clientName.toLowerCase().invoice.status.toLowerCase() ===
-        statusFilter.toLowerCase();
+      clientName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      invoice.status.toLowerCase() === statusFilter.toLowerCase();
 
     const matchesClient =
       clientFilter === "all" || invoice.client?.name === clientFilter;
@@ -69,6 +72,7 @@ function Invoices() {
 
     return (
       matchesSearch &&
+      matchesStatus &&
       matchesClient &&
       matchesDateFrom &&
       matchesDateTo &&
@@ -115,8 +119,7 @@ function Invoices() {
   };
 
   const handleEdit = (invoiceId) => {
-    console.log(`Editing invoice ${invoiceId}`);
-    // Implementation would navigate to edit page
+    navigate(`/edit-invoice/${invoiceId}`);
   };
 
   const handleExportPDF = async (invoiceId) => {

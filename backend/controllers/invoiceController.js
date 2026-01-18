@@ -82,7 +82,7 @@ export const createInvoice = async (req, res) => {
   }
 };
 
-// Get all clients
+// Get all invoices
 export const getAllInvoices = async (req, res) => {
   try {
     const invoices = await invoiceService.getAllInvoices();
@@ -96,6 +96,79 @@ export const getAllInvoices = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch clients",
+      error: error.message,
+    });
+  }
+};
+
+// Get invoice by ID
+export const getInvoiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoice = await invoiceService.getInvoiceById(id);
+
+    res.status(200).json({
+      success: true,
+      data: invoice,
+    });
+  } catch (error) {
+    console.error("Get Invoice Error:", error);
+    res.status(404).json({
+      success: false,
+      message: error.message || "Invoice not found",
+      error: error.message,
+    });
+  }
+};
+
+// Update invoice
+export const updateInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const updatedInvoice = await invoiceService.updateInvoice(id, updateData);
+
+    res.status(200).json({
+      success: true,
+      message: "Invoice updated successfully",
+      data: updatedInvoice,
+    });
+  } catch (error) {
+    console.error("Update Invoice Error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update invoice",
+      error: error.message,
+    });
+  }
+};
+
+// Delete invoice
+export const deleteInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedInvoice = await invoiceService.deleteInvoice(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Invoice deleted successfully",
+      data: deletedInvoice,
+    });
+  } catch (error) {
+    console.error("Error deleting client: ", error);
+
+    if (error.message === "Invoice not found") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete invoice",
       error: error.message,
     });
   }

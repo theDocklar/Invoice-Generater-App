@@ -45,6 +45,14 @@ function App() {
               </Layout>
             }
           />
+          <Route
+            path="/edit-invoice/:id"
+            element={
+              <Layout>
+                <CreateInvoice />
+              </Layout>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </ToastProvider>

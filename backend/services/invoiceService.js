@@ -119,6 +119,52 @@ class InvoiceService {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
     return invoices;
   }
+
+  // Update invoice
+  async updateInvoice(invoiceId, updatedData) {
+    try {
+      const invoice = await Invoice.findById(invoiceId);
+
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      if (invoice.status !== "Draft") {
+        throw new Error("Only drafts can be edited");
+      }
+
+      // Recalculate line totals if line items are being updated
+      if (updatedData.lineItems) {
+        updatedData.lineItems = updatedData.lineItems.map((item) => ({
+          ...item,
+          lineTotal: this.calculateLineTotal(item),
+        }));
+
+        // Recalculate invoice totals
+        const totals = this.calculateInvoiceTotals(updatedData.lineItems);
+        updatedData.totals = totals;
+      }
+
+      const updatedInvoice = await Invoice.findByIdAndUpdate(invoiceId, updatedData, {
+        new: true,
+        runValidators: true,
+      });
+
+      return updatedInvoice;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Delete invoice
+  async deleteInvoice(invoiceId) {
+    const invoice = await Invoice.findByIdAndDelete(invoiceId);
+
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    return invoice;
+  }
 }
 
 const invoiceService = new InvoiceService();

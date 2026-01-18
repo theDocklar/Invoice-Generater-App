@@ -73,7 +73,7 @@ export const getAllInvoices = async (filters = {}) => {
 // Get invoice by ID
 export const getInvoiceById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`);
+    const response = await fetch(`${API_URL}/view/${id}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -90,7 +90,7 @@ export const getInvoiceById = async (id) => {
 // Update invoice
 export const updateInvoice = async (id, invoiceData) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_URL}/update/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -114,7 +114,7 @@ export const updateInvoice = async (id, invoiceData) => {
 // Delete invoice
 export const deleteInvoice = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_URL}/delete-invoice/${id}`, {
       method: "DELETE",
     });
 
@@ -132,42 +132,42 @@ export const deleteInvoice = async (id) => {
 };
 
 // Update invoice status
-export const updateInvoiceStatus = async (id, status) => {
-  try {
-    const response = await fetch(`${API_URL}/${id}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status }),
-    });
+// export const updateInvoiceStatus = async (id, status) => {
+//   try {
+//     const response = await fetch(`${API_URL}/${id}/status`, {
+//       method: "PATCH",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ status }),
+//     });
 
-    const data = await response.json();
+//     const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to update invoice status");
-    }
+//     if (!response.ok) {
+//       throw new Error(data.message || "Failed to update invoice status");
+//     }
 
-    return data;
-  } catch (error) {
-    console.error("Error updating invoice status:", error);
-    throw error;
-  }
-};
+//     return data;
+//   } catch (error) {
+//     console.error("Error updating invoice status:", error);
+//     throw error;
+//   }
+// };
 
-// Get invoice statistics
-export const getInvoiceStats = async () => {
-  try {
-    const response = await fetch(`${API_URL}/stats`);
-    const data = await response.json();
+// // Get invoice statistics
+// export const getInvoiceStats = async () => {
+//   try {
+//     const response = await fetch(`${API_URL}/stats`);
+//     const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch invoice statistics");
-    }
+//     if (!response.ok) {
+//       throw new Error(data.message || "Failed to fetch invoice statistics");
+//     }
 
-    return data;
-  } catch (error) {
-    console.error("Error fetching invoice stats:", error);
-    throw error;
-  }
-};
+//     return data;
+//   } catch (error) {
+//     console.error("Error fetching invoice stats:", error);
+//     throw error;
+//   }
+// };

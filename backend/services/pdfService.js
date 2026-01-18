@@ -284,24 +284,51 @@ const pdfService = {
     <table>
       <thead>
         <tr>
-          <th style="width: 50%">Description</th>
-          <th class="center" style="width: 15%">Qty</th>
-          <th class="right" style="width: 17.5%">Unit price</th>
-          <th class="right" style="width: 17.5%">Amount</th>
+          <th style="width: 35%">Description</th>
+          <th class="center" style="width: 10%">Qty</th>
+          <th class="right" style="width: 13%">Unit price</th>
+          <th class="right" style="width: 13%">Discount</th>
+          <th class="right" style="width: 13%">Tax</th>
+          <th class="right" style="width: 16%">Amount</th>
         </tr>
       </thead>
       <tbody>
         ${items
-          .map(
-            (item) => `
+          .map((item) => {
+            const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
+            let discountAmount = 0;
+
+            if (item.discount && item.discount.value > 0) {
+              if (item.discount.type === "percentage") {
+                discountAmount = (baseAmount * item.discount.value) / 100;
+              } else {
+                discountAmount = item.discount.value;
+              }
+            }
+
+            const afterDiscount = baseAmount - discountAmount;
+            const taxAmount = (afterDiscount * (item.tax || 0)) / 100;
+
+            const discountDisplay =
+              item.discount && item.discount.value > 0
+                ? item.discount.type === "percentage"
+                  ? `${item.discount.value}%`
+                  : formatCurrency(item.discount.value)
+                : "-";
+
+            const taxDisplay = item.tax && item.tax > 0 ? `${item.tax}%` : "-";
+
+            return `
           <tr>
             <td class="description">${item.description || item.name || ""}</td>
             <td class="center">${item.quantity || "N/A"}</td>
             <td class="right">${formatCurrency(item.unitPrice || item.price)}</td>
-            <td class="right">${formatCurrency(item.amount || item.quantity * item.unitPrice)}</td>
+            <td class="right">${discountDisplay}</td>
+            <td class="right">${taxDisplay}</td>
+            <td class="right">${formatCurrency(item.lineTotal || baseAmount)}</td>
           </tr>
-        `
-          )
+        `;
+          })
           .join("")}
       </tbody>
     </table>
@@ -324,6 +351,26 @@ const pdfService = {
           <span>Subtotal</span>
           <span>${formatCurrency(totals.subtotal)}</span>
         </div>
+        ${
+          totals.totalDiscount > 0
+            ? `
+        <div class="summary-row" style="color: #059669;">
+          <span>Discount</span>
+          <span>-${formatCurrency(totals.totalDiscount)}</span>
+        </div>
+        `
+            : ""
+        }
+        ${
+          totals.totalTax > 0
+            ? `
+        <div class="summary-row">
+          <span>Tax</span>
+          <span>+${formatCurrency(totals.totalTax)}</span>
+        </div>
+        `
+            : ""
+        }
         <div class="summary-row">
           <span>Total</span>
           <span>${formatCurrency(totals.grandTotal)}</span>

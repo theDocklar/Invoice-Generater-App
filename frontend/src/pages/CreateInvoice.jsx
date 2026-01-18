@@ -1,15 +1,25 @@
 import { useState, useMemo, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
 import InvoicePreview from "../components/invoice/InvoicePreview.jsx";
 import { useToast } from "../components/Toast.jsx";
-import { createInvoice, getNextInvoiceNumber } from "../api/invoiceApi.js";
+import {
+  createInvoice,
+  getNextInvoiceNumber,
+  updateInvoice,
+  getInvoiceById,
+} from "../api/invoiceApi.js";
 import { getAllClients } from "../api/clientApi.js";
 
 function CreateInvoice() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!id);
   const [clients, setClients] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const isEditMode = !!id;
 
   // Invoice Meta Data
   const [invoiceData, setInvoiceData] = useState({
@@ -24,24 +34,26 @@ function CreateInvoice() {
       "Payment is due within 30 days. Please make payment to the account details provided. Thank you for your business!",
   });
 
-  // Fetch invoice number on component mount
+  // Fetch invoice number on component mount (only for create mode)
   useEffect(() => {
-    const fetchInvoiceNumber = async () => {
-      try {
-        const response = await getNextInvoiceNumber();
-        if (response.success) {
-          setInvoiceData((prev) => ({
-            ...prev,
-            invoiceNumber: response.data.invoiceNumber,
-          }));
+    if (!isEditMode) {
+      const fetchInvoiceNumber = async () => {
+        try {
+          const response = await getNextInvoiceNumber();
+          if (response.success) {
+            setInvoiceData((prev) => ({
+              ...prev,
+              invoiceNumber: response.data.invoiceNumber,
+            }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch invoice number:", error);
+          showError("Failed to load invoice number");
         }
-      } catch (error) {
-        console.error("Failed to fetch invoice number:", error);
-        showError("Failed to load invoice number");
-      }
-    };
-    fetchInvoiceNumber();
-  }, [showError]);
+      };
+      fetchInvoiceNumber();
+    }
+  }, [showError, isEditMode]);
 
   // Sender Data (theBOAT)
   const [senderData, setSenderData] = useState({
@@ -56,6 +68,64 @@ function CreateInvoice() {
     accountNumber: "1234567890",
     swiftCode: "CCEYLKLX",
   });
+
+  // Fetch existing invoice data in edit mode
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchInvoiceData = async () => {
+        setIsLoading(true);
+        try {
+          const response = await getInvoiceById(id);
+          if (response.success) {
+            const invoice = response.data;
+
+            // Set invoice metadata
+            setInvoiceData({
+              invoiceNumber: invoice.invoiceNumber,
+              invoiceDate: invoice.invoiceDate.split("T")[0],
+              dueDate: invoice.dueDate.split("T")[0],
+              currency: invoice.currency,
+              status: invoice.status,
+              referenceNumber: invoice.referenceNumber || "",
+              projectName: invoice.projectName || "",
+              notes: invoice.notes || "",
+            });
+
+            // Set client data
+            setClientData({
+              name: invoice.client.name,
+              company: invoice.client.company || "",
+              address: invoice.client.address,
+              email: invoice.client.email,
+              phone: invoice.client.phone || "",
+            });
+            setSelectedClientId(invoice.client.clientId || "");
+
+            // Set line items
+            const mappedItems = invoice.lineItems.map((item, index) => ({
+              id: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: {
+                type: item.discount?.type || "percentage",
+                value: item.discount?.value || "",
+              },
+              tax: item.tax || "",
+              amount: item.lineTotal || 0,
+            }));
+            setItems(mappedItems);
+          }
+        } catch (error) {
+          console.error("Failed to load invoice:", error);
+          showError("Failed to load invoice data");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchInvoiceData();
+    }
+  }, [id, isEditMode, showError]);
 
   // Fetch clients details
   useEffect(() => {
@@ -176,7 +246,7 @@ function CreateInvoice() {
           return updatedItem;
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -337,14 +407,29 @@ function CreateInvoice() {
         notes: invoiceData.notes,
       };
 
-      const response = await createInvoice(invoicePayload);
-
-      if (response.success) {
-        showSuccess("Invoice created successfully!");
-        console.log("Created Invoice:", response.data);
+      let response;
+      if (isEditMode) {
+        response = await updateInvoice(id, invoicePayload);
+        if (response.success) {
+          showSuccess("Invoice updated successfully!");
+          console.log("Updated Invoice:", response.data);
+          // Navigate back to invoices page after a short delay
+          setTimeout(() => navigate("/invoices"), 1500);
+        }
+      } else {
+        response = await createInvoice(invoicePayload);
+        if (response.success) {
+          showSuccess("Invoice created successfully!");
+          console.log("Created Invoice:", response.data);
+          // Navigate back to invoices page after a short delay
+          setTimeout(() => navigate("/invoices"), 1500);
+        }
       }
     } catch (error) {
-      showError(error.message || "Failed to create invoice");
+      showError(
+        error.message ||
+          `Failed to ${isEditMode ? "update" : "create"} invoice`,
+      );
       console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
@@ -360,6 +445,17 @@ function CreateInvoice() {
     await handleSubmit(fakeEvent);
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading invoice...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Top Bar */}
@@ -367,10 +463,12 @@ function CreateInvoice() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">
-              Create Invoice
+              {isEditMode ? "Edit Invoice" : "Create Invoice"}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Fill in the details to generate your invoice
+              {isEditMode
+                ? "Update invoice details and preview changes"
+                : "Fill in the details to generate your invoice"}
             </p>
           </div>
           <div className="flex gap-3">
@@ -381,21 +479,29 @@ function CreateInvoice() {
             >
               {showPreview ? "Hide Preview" : "Show Preview"}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleSaveDraft}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save as Draft"}
-            </Button>
+            {!isEditMode && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save as Draft"}
+              </Button>
+            )}
             <Button
               type="submit"
               variant="black"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating..." : "Create Invoice"}
+              {isSubmitting
+                ? isEditMode
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditMode
+                  ? "Update Invoice"
+                  : "Create Invoice"}
             </Button>
           </div>
         </div>
@@ -857,7 +963,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "description",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -879,7 +985,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "quantity",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -900,7 +1006,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "unitPrice",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -922,7 +1028,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "discount.value",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -940,7 +1046,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "discount.type",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -965,7 +1071,7 @@ function CreateInvoice() {
                               handleItemChange(
                                 item.id,
                                 "tax",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
