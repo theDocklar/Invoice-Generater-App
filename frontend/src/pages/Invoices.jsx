@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
+import { getAllInvoices } from "../api/invoiceApi.js";
+import { downloadInvoicePDF, previewInvoicePDF } from "../api/pdfApi.js";
+import { useToast } from "../components/Toast.jsx";
 
 function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -10,89 +14,61 @@ function Invoices() {
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { showError, showSuccess } = useToast();
+  const navigate = useNavigate();
 
-  // Sample invoice data
-  const [invoices] = useState([
-    {
-      id: 1,
-      invoiceNumber: "INV-001",
-      clientName: "Acme Corp",
-      issueDate: "2026-01-05",
-      dueDate: "2026-02-05",
-      amount: 5000.0,
-      status: "paid",
-      createdBy: "John Doe",
-    },
-    {
-      id: 2,
-      invoiceNumber: "INV-002",
-      clientName: "Tech Solutions Ltd",
-      issueDate: "2026-01-03",
-      dueDate: "2026-02-03",
-      amount: 3500.0,
-      status: "sent",
-      createdBy: "Jane Smith",
-    },
-    {
-      id: 3,
-      invoiceNumber: "INV-003",
-      clientName: "Global Industries",
-      issueDate: "2026-01-01",
-      dueDate: "2026-01-15",
-      amount: 8250.0,
-      status: "overdue",
-      createdBy: "John Doe",
-    },
-    {
-      id: 4,
-      invoiceNumber: "INV-004",
-      clientName: "StartUp Inc",
-      issueDate: "2025-12-28",
-      dueDate: "2026-01-28",
-      amount: 2100.0,
-      status: "draft",
-      createdBy: "Jane Smith",
-    },
-    {
-      id: 5,
-      invoiceNumber: "INV-005",
-      clientName: "Enterprise Group",
-      issueDate: "2025-12-25",
-      dueDate: "2026-01-25",
-      amount: 12500.0,
-      status: "sent",
-      createdBy: "John Doe",
-    },
-  ]);
+  // Fetch invoices on mount
+  useEffect(() => {
+    fetchInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch all invoices from API
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getAllInvoices();
+      if (response.success) {
+        setInvoices(response.data);
+      }
+    } catch (error) {
+      showError("Failed to load invoices");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Get unique clients for filter
-  const uniqueClients = [...new Set(invoices.map((inv) => inv.clientName))];
+  const uniqueClients = [
+    ...new Set(invoices.map((inv) => inv.client?.name || "Unknown")),
+  ];
 
   // Filter invoices based on all criteria
   const filteredInvoices = invoices.filter((invoice) => {
+    const clientName = invoice.client?.name || "";
     const matchesSearch =
       invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || invoice.status === statusFilter;
+      clientName.toLowerCase().invoice.status.toLowerCase() ===
+        statusFilter.toLowerCase();
 
     const matchesClient =
-      clientFilter === "all" || invoice.clientName === clientFilter;
+      clientFilter === "all" || invoice.client?.name === clientFilter;
 
     const matchesDateFrom =
-      !dateFrom || new Date(invoice.issueDate) >= new Date(dateFrom);
+      !dateFrom || new Date(invoice.invoiceDate) >= new Date(dateFrom);
     const matchesDateTo =
-      !dateTo || new Date(invoice.issueDate) <= new Date(dateTo);
+      !dateTo || new Date(invoice.invoiceDate) <= new Date(dateTo);
 
     const matchesMinAmount =
-      !minAmount || invoice.amount >= parseFloat(minAmount);
+      !minAmount || invoice.totals?.grandTotal >= parseFloat(minAmount);
     const matchesMaxAmount =
-      !maxAmount || invoice.amount <= parseFloat(maxAmount);
+      !maxAmount || invoice.totals?.grandTotal <= parseFloat(maxAmount);
 
     return (
       matchesSearch &&
-      matchesStatus &&
       matchesClient &&
       matchesDateFrom &&
       matchesDateTo &&
@@ -123,9 +99,19 @@ function Invoices() {
     // Implementation would update the invoice status
   };
 
-  const handleView = (invoiceId) => {
-    console.log(`Viewing invoice ${invoiceId}`);
-    // Implementation would navigate to invoice view
+  const handleView = async (invoiceId) => {
+    try {
+      const result = previewInvoicePDF(invoiceId);
+
+      if (result.success) {
+        showSuccess("Preview is ready");
+      } else {
+        showError(result.error);
+      }
+    } catch (error) {
+      showError("Failed to show a preview..");
+      console.error(error);
+    }
   };
 
   const handleEdit = (invoiceId) => {
@@ -133,14 +119,18 @@ function Invoices() {
     // Implementation would navigate to edit page
   };
 
-  const handleDuplicate = (invoiceId) => {
-    console.log(`Duplicating invoice ${invoiceId}`);
-    // Implementation would duplicate the invoice
-  };
-
-  const handleExportPDF = (invoiceId) => {
-    console.log(`Exporting invoice ${invoiceId} as PDF`);
-    // Implementation would generate PDF
+  const handleExportPDF = async (invoiceId) => {
+    try {
+      const result = await downloadInvoicePDF(invoiceId);
+      if (result.success) {
+        showSuccess("PDF downloaded successfully");
+      } else {
+        showError(result.error || "Failed to download PDF");
+      }
+    } catch (error) {
+      showError("Failed to download PDF");
+      console.error(error);
+    }
   };
 
   const handleDelete = (invoiceId) => {
@@ -164,8 +154,8 @@ function Invoices() {
       {/* Page Title and Create Button */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Invoices</h1>
-        <Button onClick={() => console.log("Create invoice")}>
-          Create Invoice
+        <Button onClick={() => navigate("/create-invoice")} variant="black">
+          + New Invoice
         </Button>
       </div>
 
@@ -329,27 +319,36 @@ function Invoices() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredInvoices.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan="8"
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
+                    Loading invoices...
+                  </td>
+                </tr>
+              ) : filteredInvoices.length > 0 ? (
                 filteredInvoices.map((invoice) => (
                   <tr
-                    key={invoice.id}
+                    key={invoice._id}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {invoice.invoiceNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {invoice.clientName}
+                      {invoice.client?.name || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {new Date(invoice.issueDate).toLocaleDateString()}
+                      {new Date(invoice.invoiceDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {new Date(invoice.dueDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      $
-                      {invoice.amount.toLocaleString("en-US", {
+                      {invoice.currency}{" "}
+                      {invoice.totals?.grandTotal?.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
@@ -357,28 +356,28 @@ function Invoices() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         onChange={(e) =>
-                          handleStatusChange(invoice.id, e.target.value)
+                          handleStatusChange(invoice._id, e.target.value)
                         }
                         value={invoice.status}
                         className={`px-3 py-1 text-xs font-semibold rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 ${getStatusColor(
-                          invoice.status
+                          invoice.status.toLowerCase(),
                         )}`}
                       >
-                        <option value="draft">Draft</option>
-                        <option value="sent">Sent</option>
-                        <option value="paid">Paid</option>
-                        <option value="overdue">Overdue</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Sent">Sent</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Overdue">Overdue</option>
+                        <option value="Cancelled">Cancelled</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {invoice.createdBy}
+                      -
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-1">
                         {/* View Button */}
                         <button
-                          onClick={() => handleView(invoice.id)}
+                          onClick={() => handleView(invoice._id)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                           title="View"
                         >
@@ -404,9 +403,9 @@ function Invoices() {
                         </button>
 
                         {/* Edit Button - Only for Draft */}
-                        {invoice.status === "draft" && (
+                        {invoice.status.toLowerCase() === "draft" && (
                           <button
-                            onClick={() => handleEdit(invoice.id)}
+                            onClick={() => handleEdit(invoice._id)}
                             className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                             title="Edit"
                           >
@@ -426,30 +425,9 @@ function Invoices() {
                           </button>
                         )}
 
-                        {/* Duplicate Button */}
-                        <button
-                          onClick={() => handleDuplicate(invoice.id)}
-                          className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
-                          title="Duplicate"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </button>
-
                         {/* Export PDF Button */}
                         <button
-                          onClick={() => handleExportPDF(invoice.id)}
+                          onClick={() => handleExportPDF(invoice._id)}
                           className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                           title="Export PDF"
                         >
@@ -470,7 +448,7 @@ function Invoices() {
 
                         {/* Delete Button */}
                         <button
-                          onClick={() => handleDelete(invoice.id)}
+                          onClick={() => handleDelete(invoice._id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors ml-1"
                           title="Delete"
                         >

@@ -33,7 +33,6 @@ const clientSchema = mongoose.Schema(
 );
 
 // Indexes
-clientSchema.index({ email: 1 });
 clientSchema.index({ name: 1 });
 
 const Client = mongoose.model("Client", clientSchema);

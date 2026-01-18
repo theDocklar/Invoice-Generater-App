@@ -46,7 +46,6 @@ const invoiceSchema = mongoose.Schema(
     invoiceNumber: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     invoiceDate: {
@@ -84,6 +83,11 @@ const invoiceSchema = mongoose.Schema(
 
     //Client Information
     client: {
+      clientId:{
+        type: mongoose.Schema.ObjectId,
+        ref: "Client",
+        default: null, // For one-time clients
+      },
       name: {
         type: String,
         required: [true, "Client name is required."],

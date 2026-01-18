@@ -3,10 +3,13 @@ import Button from "../components/Button.jsx";
 import InvoicePreview from "../components/invoice/InvoicePreview.jsx";
 import { useToast } from "../components/Toast.jsx";
 import { createInvoice, getNextInvoiceNumber } from "../api/invoiceApi.js";
+import { getAllClients } from "../api/clientApi.js";
 
 function CreateInvoice() {
   const { showSuccess, showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
 
   // Invoice Meta Data
   const [invoiceData, setInvoiceData] = useState({
@@ -54,6 +57,21 @@ function CreateInvoice() {
     swiftCode: "CCEYLKLX",
   });
 
+  // Fetch clients details
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await getAllClients();
+        if (response.success) {
+          setClients(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load clients: ", error);
+      }
+    };
+    fetchClients();
+  }, []);
+
   // Client Data
   const [clientData, setClientData] = useState({
     name: "",
@@ -68,13 +86,13 @@ function CreateInvoice() {
     {
       id: 1,
       description: "",
-      quantity: 1,
-      unitPrice: 0,
+      quantity: "",
+      unitPrice: "",
       discount: {
         type: "percentage",
-        value: 0,
+        value: "",
       },
-      tax: 0,
+      tax: "",
       amount: 0,
     },
   ]);
@@ -171,7 +189,7 @@ function CreateInvoice() {
       unitPrice: 0,
       discount: {
         type: "percentage",
-        value: 0,
+        value: "",
       },
       tax: 0,
       amount: 0,
@@ -251,6 +269,33 @@ function CreateInvoice() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle client selection from dropdown
+  const handleClientSelect = (clientId) => {
+    setSelectedClientId(clientId);
+
+    if (clientId) {
+      const selectedClient = clients.find((c) => c._id === clientId);
+
+      if (selectedClient) {
+        setClientData({
+          name: selectedClient.name,
+          company: selectedClient.companyName,
+          address: selectedClient.address,
+          email: selectedClient.email,
+          phone: selectedClient.mobile,
+        });
+      }
+    } else {
+      setClientData({
+        name: "",
+        company: "",
+        address: "",
+        email: "",
+        phone: "",
+      });
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -272,11 +317,12 @@ function CreateInvoice() {
         referenceNumber: invoiceData.referenceNumber || "",
         projectName: invoiceData.projectName || "",
         client: {
+          clientId: selectedClientId || null,
           name: clientData.name,
           company: clientData.company || "",
           address: clientData.address,
           email: clientData.email,
-          phone: clientData.phone || "",
+          phone: clientData.phone,
         },
         lineItems: items.map((item) => ({
           description: item.description,
@@ -296,9 +342,6 @@ function CreateInvoice() {
       if (response.success) {
         showSuccess("Invoice created successfully!");
         console.log("Created Invoice:", response.data);
-
-        // Optionally reset form or redirect
-        // resetForm();
       }
     } catch (error) {
       showError(error.message || "Failed to create invoice");
@@ -383,6 +426,7 @@ function CreateInvoice() {
                       name="invoiceNumber"
                       value={invoiceData.invoiceNumber}
                       onChange={handleInputChange}
+                      disabled
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.invoiceNumber
                           ? "border-red-500"
@@ -650,6 +694,40 @@ function CreateInvoice() {
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">
                   Client Information
                 </h2>
+                {/* Dropdown to select existing client OR add new */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Client
+                  </label>
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => handleClientSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">
+                      -- Select Existing Client or Enter New --
+                    </option>
+                    {clients.map((client) => (
+                      <option key={client._id} value={client._id}>
+                        {client.name}{" "}
+                        {client.companyName ? `(${client.companyName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Selection Divider */}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">
+                      {selectedClientId
+                        ? "Selected Client Details"
+                        : "Or Enter Client Details"}
+                    </span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -664,6 +742,7 @@ function CreateInvoice() {
                         errors.clientName ? "border-red-500" : "border-gray-300"
                       }`}
                       placeholder="Enter client name"
+                      disabled={selectedClientId !== ""}
                     />
                     {errors.clientName && (
                       <p className="text-red-500 text-xs mt-1">
@@ -683,6 +762,7 @@ function CreateInvoice() {
                       onChange={handleClientChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Optional"
+                      disabled={selectedClientId !== ""}
                     />
                   </div>
 
@@ -697,6 +777,7 @@ function CreateInvoice() {
                       rows="3"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       placeholder="Enter client address"
+                      disabled={selectedClientId !== ""}
                     />
                   </div>
 
@@ -715,6 +796,7 @@ function CreateInvoice() {
                           : "border-gray-300"
                       }`}
                       placeholder="client@example.com"
+                      disabled={selectedClientId !== ""}
                     />
                     {errors.clientEmail && (
                       <p className="text-red-500 text-xs mt-1">
@@ -734,6 +816,7 @@ function CreateInvoice() {
                       onChange={handleClientChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Optional"
+                      disabled={selectedClientId !== ""}
                     />
                   </div>
                 </div>
@@ -862,7 +945,7 @@ function CreateInvoice() {
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                           >
-                            <option value="percentage">Percentage (%)</option>
+                            <option value="percentage">%</option>
                             <option value="fixed">Fixed Amount</option>
                           </select>
                         </div>

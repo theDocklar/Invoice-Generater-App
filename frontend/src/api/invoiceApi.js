@@ -53,8 +53,8 @@ export const getAllInvoices = async (filters = {}) => {
     if (filters.endDate) queryParams.append("endDate", filters.endDate);
 
     const url = queryParams.toString()
-      ? `${API_URL}?${queryParams.toString()}`
-      : API_URL;
+      ? `${API_URL}/all-invoices?${queryParams.toString()}`
+      : `${API_URL}/all-invoices`;
 
     const response = await fetch(url);
     const data = await response.json();

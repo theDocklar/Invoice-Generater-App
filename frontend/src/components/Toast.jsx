@@ -12,9 +12,11 @@ export const useToast = () => {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const [counter, setCounter] = useState(0);
 
   const addToast = (message, type = "info", duration = 3000) => {
-    const id = Date.now();
+    const id = `${Date.now()}-${counter}`;
+    setCounter((prev) => prev + 1);
     setToasts((prev) => [...prev, { id, message, type }]);
 
     if (duration > 0) {
@@ -36,7 +38,8 @@ export function ToastProvider({ children }) {
   // Confirmation dialog
   const confirm = (message) => {
     return new Promise((resolve) => {
-      const id = Date.now();
+      const id = `${Date.now()}-${counter}`;
+      setCounter((prev) => prev + 1);
       setToasts((prev) => [
         ...prev,
         {

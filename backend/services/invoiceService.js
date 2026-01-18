@@ -113,6 +113,12 @@ class InvoiceService {
     }
     return invoice;
   }
+
+  // Get all invoices
+  async getAllInvoices() {
+    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    return invoices;
+  }
 }
 
 const invoiceService = new InvoiceService();

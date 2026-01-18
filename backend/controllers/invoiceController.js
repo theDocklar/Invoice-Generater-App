@@ -18,7 +18,7 @@ export const getNextInvoiceNumber = async (req, res) => {
   }
 };
 
-// Create a new invoice controller
+// Create a new invoice
 export const createInvoice = async (req, res) => {
   try {
     const invoiceData = req.body;
@@ -77,6 +77,25 @@ export const createInvoice = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create invoice",
+      error: error.message,
+    });
+  }
+};
+
+// Get all clients
+export const getAllInvoices = async (req, res) => {
+  try {
+    const invoices = await invoiceService.getAllInvoices();
+    res.status(200).json({
+      success: true,
+      count: invoices.length,
+      data: invoices,
+    });
+  } catch (error) {
+    console.error("Error fetching clients: ", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch clients",
       error: error.message,
     });
   }
