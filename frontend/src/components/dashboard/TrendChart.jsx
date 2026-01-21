@@ -7,7 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-} from "recharts";
+} from "recharts";  
 
 function TrendChart({ data }) {
   return (

@@ -36,5 +36,4 @@ const clientSchema = mongoose.Schema(
 clientSchema.index({ name: 1 });
 
 const Client = mongoose.model("Client", clientSchema);
-
 export default Client;

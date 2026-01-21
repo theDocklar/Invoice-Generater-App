@@ -1,4 +1,5 @@
 import invoiceService from "../services/invoiceService.js";
+import clientService from "../services/clientService.js";
 
 // Get next invoice number
 export const getNextInvoiceNumber = async (req, res) => {
@@ -23,7 +24,7 @@ export const createInvoice = async (req, res) => {
   try {
     const invoiceData = req.body;
 
-    // Basic validation
+    // Validation
     if (!invoiceData.dueDate) {
       return res.status(400).json({
         success: false,
@@ -45,7 +46,13 @@ export const createInvoice = async (req, res) => {
       });
     }
 
-    // Create invoice using the service
+    // Check if client exists
+    const { client, isNew } = await clientService.findOrCreateClient(
+      invoiceData.client,
+    );
+
+    invoiceData.client.clientId = client._id;
+
     const newInvoice = await invoiceService.createInvoice(invoiceData);
 
     res.status(201).json({
@@ -56,7 +63,6 @@ export const createInvoice = async (req, res) => {
   } catch (error) {
     console.error("Error creating invoice:", error);
 
-    // Handle validation errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
@@ -66,7 +72,6 @@ export const createInvoice = async (req, res) => {
       });
     }
 
-    // Handle duplicate invoice number
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,

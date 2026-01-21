@@ -165,12 +165,14 @@ export const deleteClient = async (req, res) => {
         success: false,
         message: error.message,
       });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete client",
+        error: error.message,
+      });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete client",
-      error: error.message,
-    });
   }
 };
+
+

@@ -43,6 +43,28 @@ const clientService = {
     }
     return client;
   },
+
+  // Find client by email or create new one
+  async findOrCreateClient(clientData) {
+    let client = await Client.findOne({ email: clientData.email });
+
+    if (client) {
+      return { client, isNew: false };
+    }
+
+    const newClientData = {
+      name: clientData.name,
+      companyName: clientData.company || "",
+      email: clientData.email,
+      mobile: clientData.phone,
+      address: clientData.address || "",
+    };
+
+    client = new Client(newClientData);
+    await client.save();
+
+    return { client, isNew: true };
+  },
 };
 
 export default clientService;
