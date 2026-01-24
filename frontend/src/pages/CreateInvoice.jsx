@@ -48,12 +48,16 @@ function CreateInvoice() {
           }
         } catch (error) {
           console.error("Failed to fetch invoice number:", error);
-          showError("Failed to load invoice number");
+          // Don't show error for new users, just use default
+          setInvoiceData((prev) => ({
+            ...prev,
+            invoiceNumber: "INV-" + new Date().getFullYear() + "-0001",
+          }));
         }
       };
       fetchInvoiceNumber();
     }
-  }, [showError, isEditMode]);
+  }, [isEditMode]);
 
   // Sender Data (theBOAT)
   const [senderData, setSenderData] = useState({
@@ -133,10 +137,12 @@ function CreateInvoice() {
       try {
         const response = await getAllClients();
         if (response.success) {
-          setClients(response.data);
+          setClients(response.data || []);
         }
       } catch (error) {
         console.error("Failed to load clients: ", error);
+        // Set empty array for new users - no error toast needed
+        setClients([]);
       }
     };
     fetchClients();

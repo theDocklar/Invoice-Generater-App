@@ -42,6 +42,13 @@ const lineItemSchema = new mongoose.Schema({
 
 const invoiceSchema = mongoose.Schema(
   {
+    //User Reference
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     //Invoice Metadata
     invoiceNumber: {
       type: String,
@@ -83,7 +90,7 @@ const invoiceSchema = mongoose.Schema(
 
     //Client Information
     client: {
-      clientId:{
+      clientId: {
         type: mongoose.Schema.ObjectId,
         ref: "Client",
         default: null, // For one-time clients
@@ -157,18 +164,12 @@ const invoiceSchema = mongoose.Schema(
       default: "",
       trim: true,
     },
-
-    // User reference (for future multi-user support)
-    // createdBy: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "User"
-    // }
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Indexes
-invoiceSchema.index({ invoiceNumber: 1 });
+invoiceSchema.index({ user: 1, invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ "client.name": 1 });
 invoiceSchema.index({ invoiceDate: -1 });
 invoiceSchema.index({ dueDate: -1 });

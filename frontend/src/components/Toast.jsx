@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 
 const ToastContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
@@ -15,7 +16,8 @@ export function ToastProvider({ children }) {
   const [counter, setCounter] = useState(0);
 
   const addToast = (message, type = "info", duration = 3000) => {
-    const id = `${Date.now()}-${counter}`;
+    const timestamp = Date.now();
+    const id = `${timestamp}-${counter}`;
     setCounter((prev) => prev + 1);
     setToasts((prev) => [...prev, { id, message, type }]);
 
@@ -36,7 +38,12 @@ export function ToastProvider({ children }) {
   const showWarning = (message) => addToast(message, "warning");
 
   // Confirmation dialog
-  const confirm = (message) => {
+  const confirm = (message, options = {}) => {
+    const {
+      confirmText = "Confirm",
+      cancelText = "Cancel",
+      confirmStyle = "primary",
+    } = options;
     return new Promise((resolve) => {
       const id = `${Date.now()}-${counter}`;
       setCounter((prev) => prev + 1);
@@ -46,6 +53,9 @@ export function ToastProvider({ children }) {
           id,
           message,
           type: "confirm",
+          confirmText,
+          cancelText,
+          confirmStyle,
           onConfirm: () => {
             removeToast(id);
             resolve(true);
@@ -181,34 +191,36 @@ function Toast({ toast, onClose }) {
   };
 
   if (toast.type === "confirm") {
+    const confirmButtonClass =
+      toast.confirmStyle === "danger"
+        ? "px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+        : "px-3 py-1.5 bg-black text-white text-sm rounded-lg hover:bg-gray-800 transition-colors font-medium";
+
     return (
       <div
         className={`min-w-80 max-w-md rounded-lg border shadow-lg p-4 ${getToastStyles(
-          toast.type
+          toast.type,
         )} animate-slide-in`}
       >
         <div className="flex gap-3">
-          <div className="flex-shrink-0">{getIcon(toast.type)}</div>
+          <div className="hrink-0">{getIcon(toast.type)}</div>
           <div className="flex-1">
             <p className="text-sm font-medium">{toast.message}</p>
             <div className="flex gap-2 mt-3">
-              <button
-                onClick={toast.onConfirm}
-                className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                Delete
+              <button onClick={toast.onConfirm} className={confirmButtonClass}>
+                {toast.confirmText || "Confirm"}
               </button>
               <button
                 onClick={toast.onCancel}
                 className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
-                Cancel
+                {toast.cancelText || "Cancel"}
               </button>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg
               className="w-4 h-4"
@@ -232,15 +244,15 @@ function Toast({ toast, onClose }) {
   return (
     <div
       className={`min-w-80 max-w-md rounded-lg border shadow-lg p-4 ${getToastStyles(
-        toast.type
+        toast.type,
       )} animate-slide-in`}
     >
       <div className="flex gap-3 items-start">
-        <div className="flex-shrink-0">{getIcon(toast.type)}</div>
+        <div className="shrink-0">{getIcon(toast.type)}</div>
         <p className="flex-1 text-sm font-medium">{toast.message}</p>
         <button
           onClick={onClose}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+          className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
         >
           <svg
             className="w-4 h-4"

@@ -36,11 +36,12 @@ function Clients() {
       setIsLoading(true);
       const response = await getAllClients();
       if (response.success) {
-        setClients(response.data);
+        setClients(response.data || []);
       }
     } catch (error) {
-      showError("Failed to load clients");
       console.error(error);
+      // Set empty array for new users - don't show error
+      setClients([]);
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +96,7 @@ function Clients() {
   // Handle delete with confirmation
   const handleDelete = async (clientId, clientName) => {
     const confirmed = await confirm(
-      `Are you sure you want to delete ${clientName}?`
+      `Are you sure you want to delete ${clientName}?`,
     );
     if (confirmed) {
       try {
@@ -136,7 +137,7 @@ function Clients() {
       client.name.toLowerCase().includes(searchLower) ||
       (client.companyName &&
         client.companyName.toLowerCase().includes(searchLower)) ||
-      client.email.toLowerCase().includes(searchLower) 
+      client.email.toLowerCase().includes(searchLower)
     );
   });
 

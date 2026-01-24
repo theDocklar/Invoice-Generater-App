@@ -13,7 +13,10 @@ export const createClient = async (req, res) => {
       });
     }
 
-    const newClient = await clientService.createClient(clientData);
+    const newClient = await clientService.createClient(
+      clientData,
+      req.user._id,
+    );
 
     res.status(201).json({
       success: true,
@@ -52,7 +55,7 @@ export const createClient = async (req, res) => {
 // Get all clients
 export const getAllClients = async (req, res) => {
   try {
-    const clients = await clientService.getAllClients();
+    const clients = await clientService.getAllClients(req.user._id);
 
     res.status(200).json({
       success: true,
@@ -73,7 +76,7 @@ export const getAllClients = async (req, res) => {
 export const getClientById = async (req, res) => {
   try {
     const { id } = req.params;
-    const client = await clientService.getClientById(id);
+    const client = await clientService.getClientById(id, req.user._id);
 
     res.status(200).json({
       success: true,
@@ -103,7 +106,11 @@ export const updateClient = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const updatedClient = await clientService.updateClient(id, updateData);
+    const updatedClient = await clientService.updateClient(
+      id,
+      updateData,
+      req.user._id,
+    );
 
     res.status(200).json({
       success: true,
@@ -150,7 +157,7 @@ export const updateClient = async (req, res) => {
 export const deleteClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedClient = await clientService.deleteClient(id);
+    const deletedClient = await clientService.deleteClient(id, req.user._id);
 
     res.status(200).json({
       success: true,
@@ -174,5 +181,3 @@ export const deleteClient = async (req, res) => {
     }
   }
 };
-
-

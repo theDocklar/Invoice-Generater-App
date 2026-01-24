@@ -2,11 +2,12 @@ import Invoice from "../models/invoiceModel.js";
 
 class InvoiceService {
   // Function to generate a unique invoice number
-  async generateInvoiceNumber() {
+  async generateInvoiceNumber(userId) {
     const currentYear = new Date().getFullYear();
     const prefix = `INV-${currentYear}-`;
 
     const lastInvoice = await Invoice.findOne({
+      user: userId,
       invoiceNumber: { $regex: `^${prefix}` },
     })
       .sort({ createdAt: -1 })
@@ -80,10 +81,10 @@ class InvoiceService {
   }
 
   // Create New Invoice
-  async createInvoice(invoiceData) {
+  async createInvoice(invoiceData, userId) {
     // Invoice Number Generation
     if (invoiceData.lineItems) {
-      invoiceData.invoiceNumber = await this.generateInvoiceNumber();
+      invoiceData.invoiceNumber = await this.generateInvoiceNumber(userId);
     }
 
     // Calculate line totals
@@ -98,6 +99,9 @@ class InvoiceService {
     const totals = this.calculateInvoiceTotals(invoiceData.lineItems);
     invoiceData.totals = totals;
 
+    // Add user reference
+    invoiceData.user = userId;
+
     // Create and save invoice
     const invoice = new Invoice(invoiceData);
     await invoice.save();
@@ -106,8 +110,8 @@ class InvoiceService {
   }
 
   // Get invoice by ID
-  async getInvoiceById(invoiceId) {
-    const invoice = await Invoice.findById(invoiceId);
+  async getInvoiceById(invoiceId, userId) {
+    const invoice = await Invoice.findOne({ _id: invoiceId, user: userId });
     if (!invoice) {
       throw new Error("Invoice not found");
     }
@@ -115,15 +119,17 @@ class InvoiceService {
   }
 
   // Get all invoices
-  async getAllInvoices() {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+  async getAllInvoices(userId) {
+    const invoices = await Invoice.find({ user: userId }).sort({
+      createdAt: -1,
+    });
     return invoices;
   }
 
   // Update invoice
-  async updateInvoice(invoiceId, updatedData) {
+  async updateInvoice(invoiceId, updatedData, userId) {
     try {
-      const invoice = await Invoice.findById(invoiceId);
+      const invoice = await Invoice.findOne({ _id: invoiceId, user: userId });
 
       if (!invoice) {
         throw new Error("Invoice not found");
@@ -145,10 +151,14 @@ class InvoiceService {
         updatedData.totals = totals;
       }
 
-      const updatedInvoice = await Invoice.findByIdAndUpdate(invoiceId, updatedData, {
-        new: true,
-        runValidators: true,
-      });
+      const updatedInvoice = await Invoice.findOneAndUpdate(
+        { _id: invoiceId, user: userId },
+        updatedData,
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
 
       return updatedInvoice;
     } catch (error) {
@@ -157,8 +167,11 @@ class InvoiceService {
   }
 
   // Delete invoice
-  async deleteInvoice(invoiceId) {
-    const invoice = await Invoice.findByIdAndDelete(invoiceId);
+  async deleteInvoice(invoiceId, userId) {
+    const invoice = await Invoice.findOneAndDelete({
+      _id: invoiceId,
+      user: userId,
+    });
 
     if (!invoice) {
       throw new Error("Invoice not found");

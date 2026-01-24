@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
-import { getAllInvoices } from "../api/invoiceApi.js";
+import { getAllInvoices, deleteInvoice } from "../api/invoiceApi.js";
 import { downloadInvoicePDF, previewInvoicePDF } from "../api/pdfApi.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -16,7 +16,7 @@ function Invoices() {
   const [showFilters, setShowFilters] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { showError, showSuccess } = useToast();
+  const { showError, showSuccess, confirm } = useToast();
   const navigate = useNavigate();
 
   // Fetch invoices on mount
@@ -31,11 +31,12 @@ function Invoices() {
       setIsLoading(true);
       const response = await getAllInvoices();
       if (response.success) {
-        setInvoices(response.data);
+        setInvoices(response.data || []);
       }
     } catch (error) {
-      showError("Failed to load invoices");
       console.error(error);
+      // Set empty array for new users - don't show error
+      setInvoices([]);
     } finally {
       setIsLoading(false);
     }
@@ -136,10 +137,28 @@ function Invoices() {
     }
   };
 
-  const handleDelete = (invoiceId) => {
-    if (confirm("Are you sure you want to delete this invoice?")) {
-      console.log(`Deleting invoice ${invoiceId}`);
-      // Implementation would delete or soft-delete the invoice
+  const handleDelete = async (invoiceId) => {
+    const confirmed = await confirm(
+      "Are you sure you want to delete this invoice? This action cannot be undone.",
+      {
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        confirmStyle: "danger",
+      },
+    );
+
+    if (confirmed) {
+      try {
+        const result = await deleteInvoice(invoiceId);
+
+        if (result.success) {
+          showSuccess("Invoice deleted successfully");
+          fetchInvoices();
+        }
+      } catch (error) {
+        showError(error.message || "Failed to delete invoice");
+        console.error(error);
+      }
     }
   };
 

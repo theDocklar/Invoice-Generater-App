@@ -2,21 +2,21 @@ import Client from "../models/clientModel.js";
 
 const clientService = {
   // Create a new client
-  async createClient(clientData) {
-    const client = new Client(clientData);
+  async createClient(clientData, userId) {
+    const client = new Client({ ...clientData, user: userId });
     await client.save();
     return client;
   },
 
   // Get all clients
-  async getAllClients() {
-    const clients = await Client.find().sort({ createdAt: -1 });
+  async getAllClients(userId) {
+    const clients = await Client.find({ user: userId }).sort({ createdAt: -1 });
     return clients;
   },
 
   // Get client by ID
-  async getClientById(clientId) {
-    const client = await Client.findById(clientId);
+  async getClientById(clientId, userId) {
+    const client = await Client.findOne({ _id: clientId, user: userId });
     if (!client) {
       throw new Error("Client not found");
     }
@@ -24,11 +24,15 @@ const clientService = {
   },
 
   // Update client
-  async updateClient(clientId, updateData) {
-    const client = await Client.findByIdAndUpdate(clientId, updateData, {
-      new: true,
-      runValidators: true,
-    });
+  async updateClient(clientId, updateData, userId) {
+    const client = await Client.findOneAndUpdate(
+      { _id: clientId, user: userId },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
     if (!client) {
       throw new Error("Client not found");
     }
@@ -36,8 +40,11 @@ const clientService = {
   },
 
   // Delete client
-  async deleteClient(clientId) {
-    const client = await Client.findByIdAndDelete(clientId);
+  async deleteClient(clientId, userId) {
+    const client = await Client.findOneAndDelete({
+      _id: clientId,
+      user: userId,
+    });
     if (!client) {
       throw new Error("Client not found");
     }
@@ -45,8 +52,11 @@ const clientService = {
   },
 
   // Find client by email or create new one
-  async findOrCreateClient(clientData) {
-    let client = await Client.findOne({ email: clientData.email });
+  async findOrCreateClient(clientData, userId) {
+    let client = await Client.findOne({
+      email: clientData.email,
+      user: userId,
+    });
 
     if (client) {
       return { client, isNew: false };
@@ -58,6 +68,7 @@ const clientService = {
       email: clientData.email,
       mobile: clientData.phone,
       address: clientData.address || "",
+      user: userId,
     };
 
     client = new Client(newClientData);

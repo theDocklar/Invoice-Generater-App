@@ -4,7 +4,9 @@ import clientService from "../services/clientService.js";
 // Get next invoice number
 export const getNextInvoiceNumber = async (req, res) => {
   try {
-    const invoiceNumber = await invoiceService.generateInvoiceNumber();
+    const invoiceNumber = await invoiceService.generateInvoiceNumber(
+      req.user._id,
+    );
     res.status(200).json({
       success: true,
       data: { invoiceNumber },
@@ -49,11 +51,15 @@ export const createInvoice = async (req, res) => {
     // Check if client exists
     const { client, isNew } = await clientService.findOrCreateClient(
       invoiceData.client,
+      req.user._id,
     );
 
     invoiceData.client.clientId = client._id;
 
-    const newInvoice = await invoiceService.createInvoice(invoiceData);
+    const newInvoice = await invoiceService.createInvoice(
+      invoiceData,
+      req.user._id,
+    );
 
     res.status(201).json({
       success: true,
@@ -90,7 +96,7 @@ export const createInvoice = async (req, res) => {
 // Get all invoices
 export const getAllInvoices = async (req, res) => {
   try {
-    const invoices = await invoiceService.getAllInvoices();
+    const invoices = await invoiceService.getAllInvoices(req.user._id);
     res.status(200).json({
       success: true,
       count: invoices.length,
@@ -111,7 +117,7 @@ export const getInvoiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const invoice = await invoiceService.getInvoiceById(id);
+    const invoice = await invoiceService.getInvoiceById(id, req.user._id);
 
     res.status(200).json({
       success: true,
@@ -133,7 +139,11 @@ export const updateInvoice = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const updatedInvoice = await invoiceService.updateInvoice(id, updateData);
+    const updatedInvoice = await invoiceService.updateInvoice(
+      id,
+      updateData,
+      req.user._id,
+    );
 
     res.status(200).json({
       success: true,
@@ -154,7 +164,7 @@ export const updateInvoice = async (req, res) => {
 export const deleteInvoice = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedInvoice = await invoiceService.deleteInvoice(id);
+    const deletedInvoice = await invoiceService.deleteInvoice(id, req.user._id);
 
     res.status(200).json({
       success: true,

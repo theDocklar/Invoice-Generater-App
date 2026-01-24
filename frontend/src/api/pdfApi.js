@@ -2,7 +2,9 @@ const API_URL = "http://localhost:5001/api";
 
 export const downloadInvoicePDF = async (invoiceId) => {
   try {
-    const response = await fetch(`${API_URL}/invoices/download/${invoiceId}`);
+    const response = await fetch(`${API_URL}/invoices/download/${invoiceId}`, {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

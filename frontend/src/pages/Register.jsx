@@ -14,11 +14,36 @@ function Register() {
     confirmPassword: "",
   });
 
+  // Password validation state
+  const [passwordValidation, setPasswordValidation] = useState({
+    minLength: false,
+    hasUpperCase: false,
+    hasLowerCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+  });
+
+  const validatePassword = (password) => {
+    setPasswordValidation({
+      minLength: password.length >= 8,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasLowerCase: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    });
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Validate password as user types
+    if (name === "password") {
+      validatePassword(value);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -64,7 +89,7 @@ function Register() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name Input */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <label
                   htmlFor="name"
                   className="block text-xs font-medium text-gray-700 uppercase tracking-wide"
@@ -81,7 +106,7 @@ function Register() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                   placeholder="John Doe"
                 />
-              </div>
+              </div> */}
 
               {/* Email Input */}
               <div className="space-y-2">
@@ -121,6 +146,96 @@ function Register() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
+                {/* Password Strength Indicator */}
+                {formData.password && (
+                  <div className="mt-3 space-y-2 text-xs">
+                    <p className="font-medium text-gray-700 uppercase tracking-wide mb-2">
+                      Password Requirements:
+                    </p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.minLength ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">○</span>
+                        )}
+                        <span
+                          className={
+                            passwordValidation.minLength
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          At least 8 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasUpperCase ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">○</span>
+                        )}
+                        <span
+                          className={
+                            passwordValidation.hasUpperCase
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          One uppercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasLowerCase ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">○</span>
+                        )}
+                        <span
+                          className={
+                            passwordValidation.hasLowerCase
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          One lowercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasNumber ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">○</span>
+                        )}
+                        <span
+                          className={
+                            passwordValidation.hasNumber
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          One number
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasSpecialChar ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">○</span>
+                        )}
+                        <span
+                          className={
+                            passwordValidation.hasSpecialChar
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }
+                        >
+                          One special character (!@#$%^&*)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Confirm Password Input */}

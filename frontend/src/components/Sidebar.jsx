@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "./Toast";
+import { logoutUser } from "../api/userApi";
 
 function Sidebar() {
   const [activeItem, setActiveItem] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
+  const { confirm, showSuccess } = useToast();
 
   // Update active item based on current route
   useEffect(() => {
@@ -19,6 +22,35 @@ function Sidebar() {
       setActiveItem("analytics");
     }
   }, [location.pathname]);
+
+  const handleLogout = async () => {
+    const confirmed = await confirm("Are you sure you want to logout?", {
+      confirmText: "Logout",
+      cancelText: "Cancel",
+      confirmStyle: "primary",
+    });
+
+    if (confirmed) {
+      try {
+        // Call backend logout API to clear cookie
+        await logoutUser();
+
+        // Clear user data from localStorage
+        localStorage.removeItem("user");
+
+        // Show success message
+        showSuccess("Logged out successfully");
+
+        // Redirect to login page
+        navigate("/login");
+      } catch (error) {
+        console.error("Logout error:", error);
+        // Still clear local data and redirect even if API call fails
+        localStorage.removeItem("user");
+        navigate("/login");
+      }
+    }
+  };
 
   const menuItems = [
     {
@@ -184,12 +216,8 @@ function Sidebar() {
 
         {/* Logout Button */}
         <button
-          onClick={() => setActiveItem("logout")}
-          className={`w-14 h-14 flex items-center justify-center rounded-lg transition-all duration-200 ${
-            activeItem === "logout"
-              ? "bg-gray-50 text-gray-900"
-              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-          }`}
+          onClick={handleLogout}
+          className="w-14 h-14 flex items-center justify-center rounded-lg transition-all duration-200 text-gray-400 hover:text-red-600 hover:bg-red-50"
           title="Logout"
         >
           <svg

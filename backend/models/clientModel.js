@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const clientSchema = mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     name: {
       type: String,
       required: [true, "Client name is required"],
@@ -16,7 +22,6 @@ const clientSchema = mongoose.Schema(
       required: [true, "Email is required"],
       trim: true,
       lowercase: true,
-      unique: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
     mobile: {
@@ -29,11 +34,12 @@ const clientSchema = mongoose.Schema(
       trim: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Indexes
 clientSchema.index({ name: 1 });
+clientSchema.index({ user: 1, email: 1 }, { unique: true });
 
 const Client = mongoose.model("Client", clientSchema);
 export default Client;

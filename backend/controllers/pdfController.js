@@ -5,7 +5,7 @@ export const generateInvoicePDF = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const pdfBuffer = await pdfService.generateInvoicePDF(id);
+    const pdfBuffer = await pdfService.generateInvoicePDF(id, req.user._id);
 
     // Set headers
     res.setHeader("Content-Type", "application/pdf");
@@ -28,7 +28,7 @@ export const previewInvoicePDF = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const pdfBuffer = await pdfService.generateInvoicePDF(id);
+    const pdfBuffer = await pdfService.generateInvoicePDF(id, req.user._id);
 
     // Set headers for inline display
     res.setHeader("Content-Type", "application/pdf");

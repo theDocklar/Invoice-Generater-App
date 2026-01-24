@@ -3,7 +3,9 @@ const API_URL = "http://localhost:5001/api/invoices";
 // Get next invoice number
 export const getNextInvoiceNumber = async () => {
   try {
-    const response = await fetch(`${API_URL}/next-invoice-number`);
+    const response = await fetch(`${API_URL}/next-invoice-number`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -22,6 +24,7 @@ export const createInvoice = async (invoiceData) => {
   try {
     const response = await fetch(`${API_URL}/create-invoice`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -56,7 +59,9 @@ export const getAllInvoices = async (filters = {}) => {
       ? `${API_URL}/all-invoices?${queryParams.toString()}`
       : `${API_URL}/all-invoices`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -73,7 +78,9 @@ export const getAllInvoices = async (filters = {}) => {
 // Get invoice by ID
 export const getInvoiceById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/view/${id}`);
+    const response = await fetch(`${API_URL}/view/${id}`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -92,6 +99,7 @@ export const updateInvoice = async (id, invoiceData) => {
   try {
     const response = await fetch(`${API_URL}/update/${id}`, {
       method: "PUT",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -116,6 +124,7 @@ export const deleteInvoice = async (id) => {
   try {
     const response = await fetch(`${API_URL}/delete-invoice/${id}`, {
       method: "DELETE",
+      credentials: "include",
     });
 
     const data = await response.json();

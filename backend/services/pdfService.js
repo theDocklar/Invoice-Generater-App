@@ -2,9 +2,12 @@ import puppeteer from "puppeteer";
 import invoiceModel from "../models/invoiceModel.js";
 
 const pdfService = {
-  async generateInvoicePDF(invoiceId) {
+  async generateInvoicePDF(invoiceId, userId) {
     try {
-      const invoice = await invoiceModel.findById(invoiceId);
+      const invoice = await invoiceModel.findOne({
+        _id: invoiceId,
+        user: userId,
+      });
 
       if (!invoice) {
         throw new Error("Invoice not found");

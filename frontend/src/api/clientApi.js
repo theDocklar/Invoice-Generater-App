@@ -5,6 +5,7 @@ export const createClient = async (clientData) => {
   try {
     const response = await fetch(`${API_URL}/create-client`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -27,7 +28,9 @@ export const createClient = async (clientData) => {
 // Get all clients
 export const getAllClients = async () => {
   try {
-    const response = await fetch(`${API_URL}/all-clients`);
+    const response = await fetch(`${API_URL}/all-clients`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -44,7 +47,9 @@ export const getAllClients = async () => {
 // Get client by ID
 export const getClientById = async (clientId) => {
   try {
-    const response = await fetch(`${API_URL}/${clientId}`);
+    const response = await fetch(`${API_URL}/${clientId}`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -63,6 +68,7 @@ export const updateClient = async (clientId, clientData) => {
   try {
     const response = await fetch(`${API_URL}/${clientId}`, {
       method: "PUT",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -87,6 +93,7 @@ export const deleteClient = async (clientId) => {
   try {
     const response = await fetch(`${API_URL}/${clientId}`, {
       method: "DELETE",
+      credentials: "include",
     });
 
     const data = await response.json();

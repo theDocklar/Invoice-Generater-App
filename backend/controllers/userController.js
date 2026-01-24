@@ -1,5 +1,17 @@
 import userService from "../services/userService.js";
 
+// Function to set cookie
+const setCookie = (res, token) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+
+  res.cookie("token", token, cookieOptions);
+};
+
 // User Registration
 export const registerUser = async (req, res) => {
   try {
@@ -12,21 +24,24 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const user = await userService.registerUser({
+    const result = await userService.registerUser({
       email,
       password,
       confirmPassword,
     });
 
+    setCookie(res, result.token);
+
     res.status(201).json({
       success: true,
       message: "User registered successfully",
-      data: user,
+      data: result.user,
     });
   } catch (error) {
     if (
       error.message === "Passwords do not match" ||
-      error.message === "User already exists with this email"
+      error.message === "User already exists with this email" ||
+      error.message.includes("Password must")
     ) {
       return res.status(400).json({
         success: false,
@@ -54,15 +69,17 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const user = await userService.loginUser(email, password);
+    const result = await userService.loginUser(email, password);
+
+    setCookie(res, result.token);
 
     res.status(200).json({
       success: true,
-      message: "Login successfull",
-      data: user,
+      message: "Login successful",
+      data: result.user,
     });
   } catch (error) {
-    if (error.message === "Invalid email or password") {
+    if (error.message === "Invalid credentials") {
       return res.status(401).json({
         success: false,
         message: error.message,
@@ -77,22 +94,19 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// Get user by id
-export const getUserById = async (req, res) => {
+// Get current user
+export const getCurrentUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    const deletedUser = await userService.getUserById(id);
+    const user = await userService.getCurrentUser(req.user._id);
 
     res.status(200).json({
       success: true,
-      message: "Client fetched successfully",
-      data: deletedUser,
+      data: user,
     });
   } catch (error) {
-    console.error("Error fetching client:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch client",
+      message: "Server error",
       error: error.message,
     });
   }
@@ -102,7 +116,6 @@ export const getUserById = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-
     const user = await userService.deleteUser(id);
 
     res.status(200).json({
@@ -119,4 +132,27 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// Logout user
+export const logoutUser = async (req, res) => {
+  try {
+    await userService.logoutUser();
 
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0),
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
