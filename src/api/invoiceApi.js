@@ -34,7 +34,10 @@ export const createInvoice = async (invoiceData) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to create invoice");
+      // Create error with detailed validation info
+      const error = new Error(data.message || "Failed to create invoice");
+      error.errors = data.errors; // Pass validation errors
+      throw error;
     }
 
     return data;
@@ -109,7 +112,10 @@ export const updateInvoice = async (id, invoiceData) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to update invoice");
+      // Create error with detailed validation info
+      const error = new Error(data.message || "Failed to update invoice");
+      error.errors = data.errors; // Pass validation errors
+      throw error;
     }
 
     return data;
