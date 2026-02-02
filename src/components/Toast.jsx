@@ -74,7 +74,7 @@ export function ToastProvider({ children }) {
       value={{ showSuccess, showError, showInfo, showWarning, confirm }}
     >
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2">
         {toasts.map((toast) => (
           <Toast
             key={toast.id}

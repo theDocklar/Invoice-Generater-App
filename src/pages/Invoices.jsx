@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
-import { getAllInvoices, deleteInvoice } from "../api/invoiceApi.js";
+import {
+  getAllInvoices,
+  deleteInvoice,
+  updateInvoiceStatus,
+} from "../api/invoiceApi.js";
 import { downloadInvoicePDF, previewInvoicePDF } from "../api/pdfApi.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -99,9 +103,27 @@ function Invoices() {
     }
   };
 
-  const handleStatusChange = (invoiceId, newStatus) => {
-    console.log(`Changing invoice ${invoiceId} to ${newStatus}`);
-    // Implementation would update the invoice status
+  const handleStatusChange = async (invoiceId, newStatus) => {
+    try {
+      const result = await updateInvoiceStatus(invoiceId, newStatus);
+
+      if (result.success) {
+        showSuccess(`Invoice status updated to ${newStatus}`);
+        // Update the local state to reflect the change
+        setInvoices((prevInvoices) =>
+          prevInvoices.map((inv) =>
+            inv._id === invoiceId ? { ...inv, status: newStatus } : inv,
+          ),
+        );
+      } else {
+        showError(result.message || "Failed to update invoice status");
+      }
+    } catch (error) {
+      showError(error.message || "Failed to update invoice status");
+      console.error(error);
+      // Refetch invoices to ensure UI is in sync
+      fetchInvoices();
+    }
   };
 
   const handleView = async (invoiceId) => {

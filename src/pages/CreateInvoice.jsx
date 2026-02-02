@@ -209,6 +209,17 @@ function CreateInvoice() {
   const handleClientChange = (e) => {
     const { name, value } = e.target;
     setClientData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error for this field
+    const errorFieldMap = {
+      name: "clientName",
+      email: "clientEmail",
+      address: "clientAddress",
+    };
+    const errorField = errorFieldMap[name];
+    if (errorField && errors[errorField]) {
+      setErrors((prev) => ({ ...prev, [errorField]: "" }));
+    }
   };
 
   // Calculate line item amount
@@ -254,6 +265,20 @@ function CreateInvoice() {
         return item;
       }),
     );
+
+    // Clear relevant error when user makes changes
+    const itemIndex = items.findIndex((item) => item.id === id);
+    if (itemIndex !== -1) {
+      const newErrors = { ...errors };
+      if (field === "description") {
+        delete newErrors[`item${itemIndex}Desc`];
+      } else if (field === "quantity") {
+        delete newErrors[`item${itemIndex}Qty`];
+      } else if (field === "unitPrice") {
+        delete newErrors[`item${itemIndex}Rate`];
+      }
+      setErrors(newErrors);
+    }
   };
 
   // Add new item
@@ -328,16 +353,20 @@ function CreateInvoice() {
     }
     if (!clientData.name) newErrors.clientName = "Client name is required";
     if (!clientData.email) newErrors.clientEmail = "Client email is required";
-    if (!clientData.address)
-      newErrors.clientAddress = "Client address is required";
 
     // Validate items
     items.forEach((item, index) => {
-      if (!item.description)
+      if (!item.description || item.description.trim() === "")
         newErrors[`item${index}Desc`] = "Description is required";
-      if (item.quantity <= 0)
+      if (!item.quantity || item.quantity === "" || item.quantity <= 0)
         newErrors[`item${index}Qty`] = "Quantity must be greater than 0";
-      if (item.unitPrice < 0)
+      if (
+        item.unitPrice === "" ||
+        item.unitPrice === null ||
+        item.unitPrice === undefined
+      )
+        newErrors[`item${index}Rate`] = "Unit price is required";
+      else if (item.unitPrice < 0)
         newErrors[`item${index}Rate`] = "Unit price cannot be negative";
     });
 
@@ -377,7 +406,11 @@ function CreateInvoice() {
     e.preventDefault();
 
     if (!validateForm()) {
-      showError("Please fix the errors in the form");
+      // Count errors and show specific message
+      const errorCount = Object.keys(errors).length;
+      showError(
+        `Please fix ${errorCount} error${errorCount > 1 ? "s" : ""} in the form`,
+      );
       return;
     }
 
@@ -402,13 +435,13 @@ function CreateInvoice() {
         },
         lineItems: items.map((item) => ({
           description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
+          quantity: parseFloat(item.quantity) || 0,
+          unitPrice: parseFloat(item.unitPrice) || 0,
           discount: {
             type: item.discount.type,
-            value: item.discount.value,
+            value: parseFloat(item.discount.value) || 0,
           },
-          tax: item.tax,
+          tax: parseFloat(item.tax) || 0,
         })),
         notes: invoiceData.notes,
       };
@@ -432,10 +465,32 @@ function CreateInvoice() {
         }
       }
     } catch (error) {
-      showError(
-        error.message ||
-          `Failed to ${isEditMode ? "update" : "create"} invoice`,
-      );
+      // Handle backend validation errors
+      if (
+        error.errors &&
+        Array.isArray(error.errors) &&
+        error.errors.length > 0
+      ) {
+        const backendErrors = {};
+        error.errors.forEach((err) => {
+          backendErrors[err.field] = err.message;
+        });
+        setErrors(backendErrors);
+
+        // Show specific error message
+        const errorMessages = error.errors.map((err) => err.message).join(", ");
+        showError(errorMessages.length > 100 ? error.message : errorMessages);
+      } else {
+        // Show error message or fallback message
+        const errorMsg =
+          error.message ||
+          `Failed to ${isEditMode ? "update" : "create"} invoice`;
+        if (errorMsg && errorMsg.trim() !== "") {
+          showError(errorMsg);
+        } else {
+          showError(`Failed to ${isEditMode ? "update" : "create"} invoice`);
+        }
+      }
       console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
@@ -585,6 +640,11 @@ function CreateInvoice() {
                           : "border-gray-300"
                       }`}
                     />
+                    {errors.invoiceDate && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.invoiceDate}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -888,7 +948,7 @@ function CreateInvoice() {
                       onChange={handleClientChange}
                       rows="3"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      placeholder="Enter client address"
+                      placeholder="Optional"
                       disabled={selectedClientId !== ""}
                     />
                   </div>
@@ -951,7 +1011,7 @@ function CreateInvoice() {
                 </div>
 
                 <div className="space-y-4">
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                     <div
                       key={item.id}
                       className="border border-gray-200 rounded-lg p-4 bg-gray-50"
@@ -960,7 +1020,7 @@ function CreateInvoice() {
                         {/* Description */}
                         <div className="col-span-12">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Description
+                            Description <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -972,15 +1032,24 @@ function CreateInvoice() {
                                 e.target.value,
                               )
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                              errors[`item${index}Desc`]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
                             placeholder="Item or service description"
                           />
+                          {errors[`item${index}Desc`] && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors[`item${index}Desc`]}
+                            </p>
+                          )}
                         </div>
 
                         {/* Quantity */}
                         <div className="col-span-3">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Quantity
+                            Quantity <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
@@ -994,14 +1063,23 @@ function CreateInvoice() {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                              errors[`item${index}Qty`]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
                           />
+                          {errors[`item${index}Qty`] && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors[`item${index}Qty`]}
+                            </p>
+                          )}
                         </div>
 
                         {/* Unit Price */}
                         <div className="col-span-3">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Unit Price
+                            Unit Price <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
@@ -1015,9 +1093,18 @@ function CreateInvoice() {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                              errors[`item${index}Rate`]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
                             placeholder="0.00"
                           />
+                          {errors[`item${index}Rate`] && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors[`item${index}Rate`]}
+                            </p>
+                          )}
                         </div>
 
                         {/* Discount */}

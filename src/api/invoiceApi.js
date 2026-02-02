@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5001/api/invoices";
+const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/invoices`;
 
 // Get next invoice number
 export const getNextInvoiceNumber = async () => {
@@ -34,7 +34,10 @@ export const createInvoice = async (invoiceData) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to create invoice");
+      // Create error with detailed validation info
+      const error = new Error(data.message || "Failed to create invoice");
+      error.errors = data.errors; // Pass validation errors
+      throw error;
     }
 
     return data;
@@ -109,7 +112,10 @@ export const updateInvoice = async (id, invoiceData) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to update invoice");
+      // Create error with detailed validation info
+      const error = new Error(data.message || "Failed to update invoice");
+      error.errors = data.errors; // Pass validation errors
+      throw error;
     }
 
     return data;
@@ -141,28 +147,29 @@ export const deleteInvoice = async (id) => {
 };
 
 // Update invoice status
-// export const updateInvoiceStatus = async (id, status) => {
-//   try {
-//     const response = await fetch(`${API_URL}/${id}/status`, {
-//       method: "PATCH",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({ status }),
-//     });
+export const updateInvoiceStatus = async (id, status) => {
+  try {
+    const response = await fetch(`${API_URL}/update-status/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    });
 
-//     const data = await response.json();
+    const data = await response.json();
 
-//     if (!response.ok) {
-//       throw new Error(data.message || "Failed to update invoice status");
-//     }
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update invoice status");
+    }
 
-//     return data;
-//   } catch (error) {
-//     console.error("Error updating invoice status:", error);
-//     throw error;
-//   }
-// };
+    return data;
+  } catch (error) {
+    console.error("Error updating invoice status:", error);
+    throw error;
+  }
+};
 
 // // Get invoice statistics
 // export const getInvoiceStats = async () => {
