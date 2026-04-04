@@ -1,22 +1,40 @@
-FROM node:latest
+# ============================================
+# STAGE 1: Build the application
+# ============================================
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json .
+# Copy package files first (for better caching)
+COPY package.json package-lock.json ./
 
-COPY package-lock.json .
+# Install dependencies
+RUN npm ci
 
-RUN npm install
-
+# Copy source code
 COPY . .
 
+# Build argument for API URL (passed during docker build)
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
+# Build the application
 RUN npm run build
 
-RUN npm install -g serve
+# ============================================
+# STAGE 2: Serve with Nginx
+# ============================================
+FROM nginx:alpine
 
-EXPOSE 3000
+# Copy built files from builder stage
+# Vite outputs to 'dist' folder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Copy custom Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
