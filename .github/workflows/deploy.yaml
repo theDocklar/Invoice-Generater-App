@@ -1,122 +1,96 @@
-# Name of the workflow (appears in GitHub Actions tab)
-name: Deploy Frontend to EC2
+name: Build and Deploy Frontend
 
-# ============================================
-# TRIGGERS
-# ============================================
-# When should this workflow run?
 on:
-  # Run when code is pushed to main branch
   push:
     branches:
       - main
-  
-  # Also allow manual triggering from GitHub UI
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
 
-# ============================================
-# JOBS
-# ============================================
 jobs:
-  # Job name
   build-and-deploy:
-    # Run on Ubuntu (GitHub's virtual machine)
     runs-on: ubuntu-latest
-    
-    # ============================================
-    # STEPS
-    # ============================================
+
     steps:
       # --------------------------------------------
-      # STEP 1: Check out the code
+      # STEP 1: Checkout code
       # --------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
-        # This downloads your repository code to the runner
-      
+
       # --------------------------------------------
       # STEP 2: Set up Docker Buildx
       # --------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        # Buildx is an extended build tool with better caching
-      
+
       # --------------------------------------------
-      # STEP 3: Build the Docker image
+      # STEP 3: Build Docker image
       # --------------------------------------------
       - name: Build Docker image
         run: |
-          # Build the image and tag it
-          docker build -t frontend:latest .
-          
-          # Save the image as a tar file for transfer
-          docker save frontend:latest > frontend.tar
-        # This runs the docker build command using your Dockerfile
-      
+          docker build \
+            --build-arg VITE_API_URL=/api \
+            -t frontend:latest .
+          docker save frontend:latest | gzip > frontend.tar.gz
+
       # --------------------------------------------
-      # STEP 4: Copy the image to EC2
+      # STEP 4: Copy image to EC2
       # --------------------------------------------
-      - name: Copy Docker image to EC2
+      - name: Copy to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "frontend.tar"
+          source: "frontend.tar.gz"
           target: "/home/ubuntu/app/"
-        # SCP (Secure Copy) transfers files over SSH
-      
+
       # --------------------------------------------
       # STEP 5: Deploy on EC2
       # --------------------------------------------
-      - name: Deploy to EC2
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Navigate to app directory
             cd /home/ubuntu/app
             
-            # Load the Docker image from the tar file
-            docker load < frontend.tar
+            # Load the new image
+            gunzip -c frontend.tar.gz | docker load
+            rm frontend.tar.gz
             
-            # Remove the tar file to save space
-            rm frontend.tar
+            # Check if backend exists, if not just start frontend
+            if docker images | grep -q "backend"; then
+              echo "Backend image exists, starting full stack..."
+              docker-compose up -d
+            else
+              echo "Backend not yet deployed, starting frontend only..."
+              docker-compose up -d frontend || docker run -d --name frontend -p 3000:80 frontend:latest
+            fi
             
-            # Stop and remove the old container (if exists)
-            docker stop frontend || true
-            docker rm frontend || true
-            
-            # Start the updated stack using docker-compose
-            docker-compose up -d frontend
-            
-            # Clean up old, unused images to save disk space
+            # Clean up old images
             docker image prune -f
             
-            # Show running containers for verification
+            # Show status
             docker ps
-        # This SSH into EC2 and runs deployment commands
-      
+
       # --------------------------------------------
-      # STEP 6: Health check
+      # STEP 6: Verify
       # --------------------------------------------
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
+          username: ${{ secrets.SERVER_ }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Wait for container to start
-            sleep 10
-            
-            # Check if frontend container is running
+            sleep 5
             if docker ps | grep -q frontend; then
-              echo " Frontend container is running!"
+              echo "✅ Frontend is running!"
             else
-              echo " Frontend container failed to start"
-              docker logs frontend
+              echo "❌ Frontend failed to start"
+              docker logs frontend 2>&1 || true
               exit 1
             fi
