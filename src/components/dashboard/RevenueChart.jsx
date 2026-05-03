@@ -9,7 +9,7 @@ import {
   Legend,
 } from "recharts";
 
-function RevenueChart({ data, period = "week" }) {
+function RevenueChart({ data = [], period = "week" }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data}>

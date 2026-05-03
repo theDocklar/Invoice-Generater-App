@@ -1,4 +1,4 @@
-function TopClientsTable({ clients }) {
+function TopClientsTable({ clients = [] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">

@@ -7,7 +7,7 @@ import {
   Tooltip,
 } from "recharts";
 
-function StatusChart({ data }) {
+function StatusChart({ data = [] }) {
   const COLORS = {
     draft: "#6b7280",
     sent: "#3b82f6",

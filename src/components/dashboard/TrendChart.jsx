@@ -9,7 +9,7 @@ import {
   Legend,
 } from "recharts";  
 
-function TrendChart({ data }) {
+function TrendChart({ data = [] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data}>
