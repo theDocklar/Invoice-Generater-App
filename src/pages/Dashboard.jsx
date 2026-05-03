@@ -9,52 +9,6 @@ import TopClientsTable from "../components/dashboard/TopClientsTable.jsx";
 function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
 
-  // KPI Data
-  const kpiData = {
-    totalInvoices: 156,
-    totalRevenue: 245000,
-    totalPaid: 185000,
-    totalOutstanding: 45000,
-    totalOverdue: 15000,
-    averageInvoiceValue: 1571.79,
-  };
-
-  // Revenue Chart Data
-  const revenueData = [
-    { date: "Week 1", revenue: 45000 },
-    { date: "Week 2", revenue: 52000 },
-    { date: "Week 3", revenue: 48000 },
-    { date: "Week 4", revenue: 61000 },
-    { date: "Week 5", revenue: 58000 },
-  ];
-
-  // Trend Chart Data (Paid vs Outstanding)
-  const trendData = [
-    { date: "Jan 1", paid: 35000, outstanding: 15000 },
-    { date: "Jan 3", paid: 42000, outstanding: 18000 },
-    { date: "Jan 5", paid: 48000, outstanding: 12000 },
-    { date: "Jan 7", paid: 55000, outstanding: 10000 },
-    { date: "Jan 9", paid: 60000, outstanding: 8000 },
-  ];
-
-  // Status Distribution Data
-  const statusData = [
-    { name: "Draft", value: 12 },
-    { name: "Sent", value: 23 },
-    { name: "Paid", value: 98 },
-    { name: "Overdue", value: 15 },
-    { name: "Cancelled", value: 8 },
-  ];
-
-  // Top Clients Data
-  const topClients = [
-    { id: 1, name: "Acme Corp", invoiceCount: 24, revenue: 125000 },
-    { id: 2, name: "Tech Solutions Ltd", invoiceCount: 18, revenue: 89500 },
-    { id: 3, name: "Global Industries", invoiceCount: 15, revenue: 78000 },
-    { id: 4, name: "StartUp Inc", invoiceCount: 12, revenue: 56000 },
-    { id: 5, name: "Enterprise Group", invoiceCount: 10, revenue: 45000 },
-  ];
-
   return (
     <div className="p-8">
       {/* Page Header */}
@@ -81,7 +35,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <StatCard
           title="Total Invoices Issued"
-          value={kpiData.totalInvoices}
+          value="-"
           variant="default"
           icon={
             <svg
@@ -102,7 +56,7 @@ function Dashboard() {
 
         <StatCard
           title="Total Revenue Invoiced"
-          value={`$${kpiData.totalRevenue.toLocaleString()}`}
+          value="-"
           variant="primary"
           icon={
             <svg
@@ -124,7 +78,7 @@ function Dashboard() {
 
         <StatCard
           title="Total Paid"
-          value={`$${kpiData.totalPaid.toLocaleString()}`}
+          value="-"
           variant="success"
           icon={
             <svg
@@ -145,7 +99,7 @@ function Dashboard() {
 
         <StatCard
           title="Total Outstanding"
-          value={`$${kpiData.totalOutstanding.toLocaleString()}`}
+          value="-"
           variant="warning"
           icon={
             <svg
@@ -166,7 +120,7 @@ function Dashboard() {
 
         <StatCard
           title="Total Overdue"
-          value={`$${kpiData.totalOverdue.toLocaleString()}`}
+          value="-"
           variant="danger"
           icon={
             <svg
@@ -187,10 +141,7 @@ function Dashboard() {
 
         <StatCard
           title="Average Invoice Value"
-          value={`$${kpiData.averageInvoiceValue.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value="-"
           variant="default"
           icon={
             <svg
@@ -223,12 +174,12 @@ function Dashboard() {
             </select>
           }
         >
-          <RevenueChart data={revenueData} period={selectedPeriod} />
+          <RevenueChart period={selectedPeriod} />
         </ChartCard>
 
         {/* Paid vs Outstanding Trend */}
         <ChartCard title="Paid vs Outstanding Trend">
-          <TrendChart data={trendData} />
+          <TrendChart />
         </ChartCard>
       </div>
 
@@ -236,12 +187,12 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution Chart */}
         <ChartCard title="Invoice Status Distribution">
-          <StatusChart data={statusData} />
+          <StatusChart />
         </ChartCard>
 
         {/* Top Clients Table */}
         <ChartCard title="Top Clients by Revenue">
-          <TopClientsTable clients={topClients} />
+          <TopClientsTable />
         </ChartCard>
       </div>
     </div>
