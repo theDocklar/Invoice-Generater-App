@@ -308,7 +308,7 @@ function Invoices() {
                   type="number"
                   value={minAmount}
                   onChange={(e) => setMinAmount(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
@@ -321,7 +321,7 @@ function Invoices() {
                   type="number"
                   value={maxAmount}
                   onChange={(e) => setMaxAmount(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
@@ -392,10 +392,9 @@ function Invoices() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {invoice.currency}{" "}
-                      {invoice.totals?.grandTotal?.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {Math.round(invoice.totals?.grandTotal || 0).toLocaleString(
+                        "en-US",
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select

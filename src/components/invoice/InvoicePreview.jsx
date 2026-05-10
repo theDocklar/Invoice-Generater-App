@@ -14,7 +14,8 @@ function InvoicePreview({
         : invoiceData.currency === "GBP"
         ? "£"
         : "Rs.";
-    return `${symbol}${Number(amount).toFixed(2)}`;
+    const roundedAmount = Math.round(Number(amount) || 0);
+    return `${symbol}${roundedAmount.toLocaleString("en-US")}`;
   };
 
   const formatDate = (date) => {
@@ -114,19 +115,13 @@ function InvoicePreview({
                   <th className="text-right py-3 font-semibold text-sm text-gray-900 w-28">
                     Unit price
                   </th>
-                  <th className="text-right py-3 font-semibold text-sm text-gray-900 w-24">
-                    Discount
-                  </th>
-                  <th className="text-right py-3 font-semibold text-sm text-gray-900 w-20">
-                    Tax
-                  </th>
                   <th className="text-right py-3 font-semibold text-sm text-gray-900 w-28">
                     Amount
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => (
+                {items.map((item) => (
                   <tr key={item.id} className="border-b border-gray-200">
                     <td className="py-3 text-sm text-gray-900">
                       {item.description || "Untitled Item"}
@@ -138,16 +133,6 @@ function InvoicePreview({
                     </td>
                     <td className="py-3 text-sm text-gray-900 text-right">
                       {formatCurrency(item.unitPrice)}
-                    </td>
-                    <td className="py-3 text-sm text-gray-900 text-right">
-                      {item.discount?.value > 0
-                        ? item.discount.type === "percentage"
-                          ? `${item.discount.value}%`
-                          : formatCurrency(item.discount.value)
-                        : "-"}
-                    </td>
-                    <td className="py-3 text-sm text-gray-900 text-right">
-                      {item.tax > 0 ? `${item.tax}%` : "-"}
                     </td>
                     <td className="py-3 text-sm text-gray-900 text-right font-medium">
                       {formatCurrency(item.amount)}
@@ -202,14 +187,6 @@ function InvoicePreview({
                     </span>
                   </div>
                 )}
-                {totals.taxTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="text-gray-900 text-right">
-                      {formatCurrency(totals.taxTotal)}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total</span>
                   <span className="text-gray-900 text-right">
@@ -234,7 +211,7 @@ function InvoicePreview({
             </p>
             <p className="mt-1">
               If you have any questions regarding this invoice, please contact
-              Thomas Green at the email above.
+              us at the email above.
             </p>
             <p className="mt-1">Thank you for your business.</p>
           </div>

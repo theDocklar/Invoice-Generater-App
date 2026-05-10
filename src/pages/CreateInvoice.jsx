@@ -51,7 +51,11 @@ function CreateInvoice() {
           // Don't show error for new users, just use default
           setInvoiceData((prev) => ({
             ...prev,
-            invoiceNumber: "INV-" + new Date().getFullYear() + "-0001",
+            invoiceNumber:
+              String(new Date().getDate()).padStart(2, "0") +
+              String(new Date().getMonth() + 1).padStart(2, "0") +
+              new Date().getFullYear() +
+              "-001",
           }));
         }
       };
@@ -61,16 +65,16 @@ function CreateInvoice() {
 
   // Sender Data (theBOAT)
   const [senderData, setSenderData] = useState({
-    companyName: "theBOAT",
+    companyName: "The Boat Ceylon (Pvt) Ltd",
     address: "123 Marine Drive, Colombo 03, Sri Lanka",
-    email: "hello@theboat.lk",
+    email: "info@theboatgrp.com",
     phone: "+94 11 234 5678",
-    website: "www.theboat.lk",
+    website: "theboatgrp.com",
     taxId: "BR-12345678",
-    accountName: "theBOAT (Pvt) Ltd",
-    bankName: "Commercial Bank of Ceylon",
-    accountNumber: "1234567890",
-    swiftCode: "CCEYLKLX",
+    accountName: "The Boat Ceylon (Pvt) Ltd",
+    bankName: "Hatton National Bank",
+    accountNumber: "155020134399",
+    swiftCode: "CCEYLKLX", 
   });
 
   // Fetch existing invoice data in edit mode
@@ -115,7 +119,6 @@ function CreateInvoice() {
                 type: item.discount?.type || "percentage",
                 value: item.discount?.value || "",
               },
-              tax: item.tax || "",
               amount: item.lineTotal || 0,
             }));
             setItems(mappedItems);
@@ -157,7 +160,7 @@ function CreateInvoice() {
     phone: "",
   });
 
-  // Line Items with discount and tax
+  // Line Items with discount
   const [items, setItems] = useState([
     {
       id: 1,
@@ -168,7 +171,6 @@ function CreateInvoice() {
         type: "percentage",
         value: "",
       },
-      tax: "",
       amount: 0,
     },
   ]);
@@ -235,11 +237,6 @@ function CreateInvoice() {
       }
     }
 
-    // Apply tax
-    if (item.tax > 0) {
-      amount = amount + (amount * item.tax) / 100;
-    }
-
     return Math.max(0, amount);
   };
 
@@ -292,7 +289,6 @@ function CreateInvoice() {
         type: "percentage",
         value: "",
       },
-      tax: 0,
       amount: 0,
     };
     setItems([...items, newItem]);
@@ -320,19 +316,9 @@ function CreateInvoice() {
       }
     }, 0);
 
-    const taxTotal = items.reduce((sum, item) => {
-      const lineTotal = item.quantity * item.unitPrice;
-      const afterDiscount =
-        item.discount.type === "percentage"
-          ? lineTotal - (lineTotal * item.discount.value) / 100
-          : lineTotal - item.discount.value;
+    const grandTotal = subtotal - discountTotal;
 
-      return sum + (afterDiscount * item.tax) / 100;
-    }, 0);
-
-    const grandTotal = subtotal - discountTotal + taxTotal;
-
-    return { subtotal, discountTotal, taxTotal, grandTotal };
+    return { subtotal, discountTotal, grandTotal };
   }, [items]);
 
   // Validate form
@@ -441,7 +427,6 @@ function CreateInvoice() {
             type: item.discount.type,
             value: parseFloat(item.discount.value) || 0,
           },
-          tax: parseFloat(item.tax) || 0,
         })),
         notes: invoiceData.notes,
       };
@@ -685,7 +670,7 @@ function CreateInvoice() {
                     </select>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Reference / PO Number
                     </label>
@@ -697,9 +682,9 @@ function CreateInvoice() {
                       placeholder="Optional"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
+                  </div> */}
 
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Project / Service Name
                     </label>
@@ -711,7 +696,7 @@ function CreateInvoice() {
                       placeholder="Optional"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -747,7 +732,7 @@ function CreateInvoice() {
                     />
                   </div>
 
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Address
                     </label>
@@ -758,7 +743,7 @@ function CreateInvoice() {
                       rows="2"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
-                  </div>
+                  </div> */}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -786,7 +771,7 @@ function CreateInvoice() {
                     />
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Tax ID / BR Number
                     </label>
@@ -797,7 +782,7 @@ function CreateInvoice() {
                       onChange={handleSenderChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
+                  </div> */}
 
                   {/* Bank Details */}
                   <div className="col-span-2 border-t border-gray-200 pt-4 mt-2">
@@ -1084,7 +1069,7 @@ function CreateInvoice() {
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
+                            step="1"
                             value={item.unitPrice}
                             onChange={(e) =>
                               handleItemChange(
@@ -1098,7 +1083,7 @@ function CreateInvoice() {
                                 ? "border-red-500"
                                 : "border-gray-300"
                             }`}
-                            placeholder="0.00"
+                            placeholder="0"
                           />
                           {errors[`item${index}Rate`] && (
                             <p className="text-red-500 text-xs mt-1">
@@ -1149,28 +1134,6 @@ function CreateInvoice() {
                           </select>
                         </div>
 
-                        {/* Tax */}
-                        <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Tax (%)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={item.tax}
-                            onChange={(e) =>
-                              handleItemChange(
-                                item.id,
-                                "tax",
-                                parseFloat(e.target.value) || 0,
-                              )
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            placeholder="0"
-                          />
-                        </div>
                       </div>
 
                       {/* Line Total and Delete */}
@@ -1178,7 +1141,8 @@ function CreateInvoice() {
                         <div className="text-sm">
                           <span className="text-gray-600">Line Total: </span>
                           <span className="font-semibold text-gray-900">
-                            {invoiceData.currency} {item.amount.toFixed(2)}
+                            {invoiceData.currency}{" "}
+                            {Math.round(item.amount || 0).toLocaleString("en-US")}
                           </span>
                         </div>
                         {items.length > 1 && (

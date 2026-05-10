@@ -54,10 +54,7 @@ function TopClientsTable({ clients = [] }) {
               <td className="px-4 py-3 whitespace-nowrap text-right">
                 <div className="text-sm font-semibold text-gray-900">
                   $
-                  {client.revenue.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {Math.round(client.revenue || 0).toLocaleString("en-US")}
                 </div>
               </td>
             </tr>
